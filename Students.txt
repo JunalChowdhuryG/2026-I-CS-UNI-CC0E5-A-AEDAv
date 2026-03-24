@@ -1,2 +1,8 @@
-# 1. Ernesto Cuadros-Vargas <ecuadros@spc.org.pe>,
-# 2. 
+# 1. Cuadros-Vargas, Ernesto <ecuadros@spc.org.pe>,
+Chipana Calderon, Guido
+Chowdhury Gomez, Junal
+Hinojosa Zamora, Frank
+Llanos Rosadio, Jose
+Mesajil Lopez, Cristian
+Trujillo Armas, Andrei
+

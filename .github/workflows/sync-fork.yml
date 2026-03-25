@@ -23,6 +23,13 @@ jobs:
         run: |
           for branch in $(git branch -r | grep upstream/ | grep -v '\->'); do
             branch_name=$(echo $branch | sed 's|upstream/||')
+      
+            # saltar main
+            if [ "$branch_name" = "main" ]; then
+              echo "Skipping main branch"
+              continue
+            fi
+      
             git checkout -B $branch_name $branch
-            git push origin $branch_name
+            git push origin $branch_name --force
           done

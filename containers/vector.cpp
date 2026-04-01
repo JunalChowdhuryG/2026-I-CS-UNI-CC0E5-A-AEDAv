@@ -10,8 +10,9 @@ void AddOne(int& n){
     n+= 2;
 }
 
-void Add(int& n, int value){
-    n+= value;
+template <typename T>
+void Add(T& n, T value){
+    n += value;
 }
 
 void DemoVector(){
@@ -43,10 +44,12 @@ void DemoVector(){
 
     ForEach(v1, AddOne);
     Print(v1, cout);
-    ForEach(v1, Add, 10);
+    ForEach(v1, Add<T1>, 10);
     Print(v1, cout);
-    
+
     Print(v2, cout);
+    ForEach(v2, Add<string>, "XYZ");
+    cout << v2 << endl;
 
     Print(v1, of);
     Print(v2, of);

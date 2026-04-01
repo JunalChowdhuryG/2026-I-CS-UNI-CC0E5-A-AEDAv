@@ -6,6 +6,10 @@
 
 using namespace std;
 
+void AddOne(int& n){
+    n+= 2;
+}
+
 void DemoVector(){
     Vector<T1> v1(3);
     v1.push_back(1);
@@ -33,6 +37,8 @@ void DemoVector(){
     of << v2 << endl;
     // of.close();
 
+    ForEach(v1, AddOne);
+    
     Print(v1, cout);
     Print(v2, cout);
 

@@ -5,17 +5,50 @@
 #include <cstddef> // size_t
 #include <string>
 #include <sstream>
+// #include "../GeneralIterator.h"
 #include "util.h"
 #include "../types.h"
 using namespace std;
 
+template <typename Container>
+class vector_forward_iterator{
+public:
+    typedef typename Container::value_type    value_type;
+    typedef vector_forward_iterator<Container> myself;
+protected:
+    Container *m_pContainer;
+    size_t     m_pos;
+public:
+    vector_forward_iterator(Container *pContainer, size_t pos)
+        : m_pContainer(pContainer), m_pos(pos) {}
+    vector_forward_iterator(myself &other) 
+          : m_pContainer(other.m_pContainer), m_pos(other.m_pos){}
+    vector_forward_iterator(myself &&other) // Move constructor
+          {   m_pContainer = move(other.m_pContainer);
+              m_pos        = move(other.m_pos);
+          }
+    myself operator=(myself &iter)
+          {   m_pContainer = move(iter.m_pContainer);
+              m_pos        = move(iter.m_pos);
+              return *(myself *)this; // Pending static_cast?
+          }
+
+    bool operator==(myself iter)   { return !(*this != iter); }
+    bool operator!=(myself iter)   { return m_pContainer != iter.m_pContainer || m_pos != iter.m_pos; }
+    value_type &operator*()              { return m_pContainer->m_data[m_pos];   }
+    myself operator++()                  { m_pos++; return *this; }
+};
+
 template <typename T>
 class Vector{
+public:
     using value_type = T;
+    using iterator = vector_forward_iterator< Vector<T> > ;
+    friend iterator;
 private:
     size_t  m_capacity;
     size_t  m_size;
-    T * m_data;
+    T      *m_data;
     void resize();
 public:
     Vector(size_t capacity = 10);
@@ -24,6 +57,10 @@ public:
     virtual value_type  get(size_t index);
     virtual size_t  size();
     virtual string toString();
+
+    iterator begin() { return iterator(this, 0); }
+    iterator end()   { return iterator(this, m_size); }
+
 };
 
 template <typename T>

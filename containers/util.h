@@ -13,8 +13,14 @@ void ForEach(Container& c, Func func){
         func(*it);
 }
 
+template <typename Iterator, typename Func, typename... Args>
+void ForEach(Iterator begin, Iterator end, Func func, Args&&... args){
+    for(auto it = begin; it != end; ++it)
+        func(*it, forward<Args>(args)...);
+}
+
 template <typename Container, typename Func, typename... Args>
-void ForEach(Container& c, Func func, Args... args){
-    for(auto it = c.begin(); it != c.end(); ++it)
-        func(*it, args...);
+void ForEach(Container& container, Func func, Args&&... args){
+    ForEach(container.begin(), container.end(), 
+            func, forward<Args>(args)...);
 }

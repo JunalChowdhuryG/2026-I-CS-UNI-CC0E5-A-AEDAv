@@ -61,6 +61,10 @@ public:
     iterator begin() { return iterator(this, 0); }
     iterator end()   { return iterator(this, m_size); }
 
+    template <typename Func, typename... Args>
+    void ForEach(Func func, Args &&...  args){
+        ::ForEach(begin(), end(), func, std::forward<Args>(args)... );
+    }
 };
 
 template <typename T>
@@ -127,6 +131,12 @@ template <typename T>
 istream& operator>>(istream& is, Vector<T>& v){
     return is;
 }
+
+// template <typename T>
+// template <typename Func, typename... Args>
+// void Vector<T>::ForEach(Func func, Args &&...  args){
+//     ::ForEach(begin(), end(), func, std::forward<Args>(args)... );
+// }
 
 void DemoVector();
 

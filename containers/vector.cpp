@@ -7,7 +7,7 @@
 using namespace std;
 
 void AddOne(int& n){
-    n+= 2;
+    n++;
 }
 
 template <typename T>
@@ -45,6 +45,8 @@ void DemoVector(){
     ForEach(v1, AddOne);
     Print(v1, cout);
     ForEach(v1, Add<T1>, 10);
+    cout << "Imprimiendo desde adentro de Vector:" << endl;
+    v1.ForEach(Add<T1>, 5);
     Print(v1, cout);
 
     Print(v2, cout);

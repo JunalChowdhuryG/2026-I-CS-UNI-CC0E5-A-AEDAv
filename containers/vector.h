@@ -20,8 +20,8 @@ private:
 public:
     Vector(size_t capacity = 10);
     virtual ~Vector();
-    virtual void push_back(T value);
-    virtual T  get(size_t index);
+    virtual void push_back(value_type value);
+    virtual value_type  get(size_t index);
     virtual size_t  size();
     virtual string toString();
 };
@@ -40,7 +40,7 @@ Vector<T>::~Vector(){
 
 template <typename T>
 void Vector<T>::resize(){
-    m_capacity = (m_capacity == 0) ? 10 : m_capacity * 2;
+    m_capacity = (m_capacity < 10) ? m_capacity+10 : m_capacity * 2;
     T * new_data = new T[m_capacity];
     for(size_t i = 0; i < m_size; ++i)
         new_data[i] = m_data[i];
@@ -49,14 +49,15 @@ void Vector<T>::resize(){
 }
 
 template <typename T>
-void Vector<T>::push_back(T value){
+void Vector<T>::push_back(value_type value){
     if(m_size == m_capacity) // Overflow
         resize();
     m_data[m_size++] = value;
 }
 
 template <typename T>
-T Vector<T>::get(size_t index){
+typename Vector<T>::value_type
+Vector<T>::get(size_t index){
     if(index >= 0 && index < m_size)
         return m_data[index];
     throw std::out_of_range("Index out of range");

@@ -7,7 +7,7 @@
 using namespace std;
 
 void DemoVector(){
-    Vector<T1> v1(10);
+    Vector<T1> v1(3);
     v1.push_back(1);
     v1.push_back(2);
     v1.push_back(-1);

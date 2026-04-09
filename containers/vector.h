@@ -129,6 +129,23 @@ ostream& operator<<(ostream& os, Vector<T>& v){
 // TODO: Implementar como PR
 template <typename T>
 istream& operator>>(istream& is, Vector<T>& v){
+    char c;
+    is >>c;
+    if (c!='['){
+        is.setstate(std::ios::failbit);
+        return is;
+    }
+    T value;
+    while(is>>value) {
+        v.push_back(value);
+        is>>c;
+        if(c==']'){
+            break;
+        } else if(c !=',') {
+            is.setstate(std::ios::failbit);
+            break;
+        }
+    }
     return is;
 }
 

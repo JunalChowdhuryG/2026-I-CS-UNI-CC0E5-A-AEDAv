@@ -83,8 +83,11 @@ void DemoConcurrentVector(){
     thread t3(worker, 3);
     thread t4(worker, 4);
     thread t5(worker, 5);
+    thread t6(worker, 6);
+    thread t7(worker, 7);
+    thread t8(worker, 8);
 
-    t1.join(); t2.join(); t3.join(); t4.join(); t5.join();
+    t1.join(); t2.join(); t3.join(); t4.join(); t5.join(); t6.join(); t7.join(); t8.join();
 
     // Resultado esperado sin race condition: 4 elementos * 100000 * 5 threads = 500000
     cout << "Resultado (esperado 500000): " << v << endl;

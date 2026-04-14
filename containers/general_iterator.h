@@ -7,8 +7,6 @@ template <typename Container, class IteratorBase> //
 class general_iterator
 {public:
     using Node = typename Container::Node;
-    // using value_type =  typename Node::value_type;
-    //using Parent = class general_iterator<Container>;
     using myself = general_iterator<Container, IteratorBase>;
     
 protected:

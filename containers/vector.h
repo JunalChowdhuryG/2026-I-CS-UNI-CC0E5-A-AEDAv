@@ -14,15 +14,19 @@ using namespace std;
 template <typename Container>
 class vector_forward_iterator : public general_iterator<Container, vector_forward_iterator<Container>> {
 public:
-    using general_iterator<Container, vector_forward_iterator<Container>>::general_iterator;
-    vector_forward_iterator operator++() { this->m_pNode++; return *this; }
+    using MySelf = vector_forward_iterator<Container>;
+    using Parent = general_iterator<Container, MySelf>;
+    using Parent::Parent;
+    MySelf operator++() { this->m_pNode++; return *this; }
 };
 
 template <typename Container>
 class vector_backward_iterator : public general_iterator<Container, vector_backward_iterator<Container>> {
 public:
-    using general_iterator<Container, vector_backward_iterator<Container>>::general_iterator;
-    vector_backward_iterator operator++() { this->m_pNode--; return *this; }
+    using MySelf = vector_backward_iterator<Container>;
+    using Parent = general_iterator<Container, MySelf>;
+    using Parent::Parent;
+    MySelf operator++() { this->m_pNode--; return *this; }
 };
 
 template <typename T>
@@ -77,7 +81,6 @@ public:
     Vector(size_t capacity = 10);
     virtual ~Vector();
     virtual void push_back(value_type value, Ref ref);
-    virtual value_type  get(size_t index);
     virtual size_t size();
     virtual string toString();
 
@@ -131,14 +134,6 @@ void Vector<T>::push_back(value_type value, Ref ref){
 }
 
 template <typename T>
-typename Vector<T>::value_type
-Vector<T>::get(size_t index){
-    if(index >= 0 && index < m_size)
-        return m_data[index].getData();
-    throw std::out_of_range("Index out of range");
-}
-
-template <typename T>
 size_t Vector<T>::size(){
     return m_size;
 }
@@ -160,7 +155,7 @@ ostream& operator<<(ostream& os, Vector<T>& v){
     return os << v.toString();
 }
 
-// TODO: Implementar como PR
+// TODO: Implementar
 template <typename T>
 istream& operator>>(istream& is, Vector<T>& v){
     return is;

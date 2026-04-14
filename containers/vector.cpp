@@ -4,10 +4,11 @@
 #include <fstream>
 #include <thread>
 #include "vector.h"
-
 using namespace std;
 
 void AddOne(int& n){
+    static mutex mtx;
+    scoped_lock lock(mtx);
     ++n;
 }
 

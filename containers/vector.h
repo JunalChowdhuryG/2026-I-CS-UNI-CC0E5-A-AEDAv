@@ -5,6 +5,7 @@
 #include <cstddef> // size_t
 #include <string>
 #include <sstream>
+#include <mutex>
 #include <shared_mutex> // shared_mutex
 #include "general_iterator.h"
 #include "util.h"
@@ -162,9 +163,21 @@ ostream& operator<<(ostream& os, const Vector<T>& v){
     return os << v.toString();
 }
 
-// TODO: Implementar
 template <typename T>
 istream& operator>>(istream& is, Vector<T>& v){
+    // Expects [(val, ref), (val, ref), ...]
+    char c;
+    if (!(is >> c) || c != '[') return is;
+    while(is >> c && c != ']'){
+        if(c == '('){
+            T val;
+            Ref ref;
+            if (is >> val >> c >> ref >> c) { // val, ref)
+                v.push_back(val, ref);
+            }
+            if (!(is >> c) || c == ']') break; // ',' or ']'
+        }
+    }
     return is;
 }
 

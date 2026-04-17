@@ -44,5 +44,5 @@ jobs:
 
             git fetch upstream $branch_name
             git checkout -B $branch_name upstream/$branch_name
-            git push origin $branch_name
+            git push origin $branch_name --force
           done

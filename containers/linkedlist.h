@@ -7,30 +7,31 @@
 #include <sstream>
 #include <stdexcept>
 #include <mutex>
-#include <shared_mutex> // shared_mutex
+#include <shared_mutex> 
+#include <utility>
+#include <tuple>
 #include "general_iterator.h"
 #include "util.h"
 #include "../types.h"
 using namespace std;
 
-// Forward iterator
+// Iterador Forward
 template <typename Container>
 class LinkedListForwardIterator : public general_iterator<Container, LinkedListForwardIterator<Container>>{
 public:
     using MySelf = LinkedListForwardIterator<Container>;
     using Parent = general_iterator<Container, MySelf>;
     using Parent::Parent;
-    // TODO: Completar el operator++
-    //t4:fowrard it(op++)
+    
     MySelf operator++() {
         if (this->m_pNode) {
-            this->m_pNode=this->m_pNode->getNext();
+            this->m_pNode = this->m_pNode->getNext();
         }
         return *this;
     }
 };
 
-// Linked List Node
+// Estructura del Nodo
 template <typename T>
 class LLNode{
     using Node = LLNode<T>;
@@ -39,7 +40,6 @@ private:
     Ref m_ref;
     Node *m_next;
 public:
-    //Ref metadadto
     LLNode() : m_data(T()), m_ref(Ref()), m_next(nullptr) {}
     LLNode(T data, Ref ref) : m_data(data), m_ref(ref), m_next(nullptr) {}
     LLNode(T data, Ref ref, Node *next) : m_data(data), m_ref(ref), m_next(next) {}
@@ -50,11 +50,12 @@ public:
     void   setData(T data) { m_data = data; }
     Ref    getRef() const  { return m_ref; }
     void   setRef(Ref ref) { m_ref = ref; }
-    Node*  getNext() const { return m_next; }
+    Node* getNext() const { return m_next; }
     Node*& getNextRef()    { return m_next; }
     void   setNext(Node *next) { m_next = next; }
 };
 
+// Traits de Ordenamiento
 template <typename T>
 struct AscendingLinkedListTrait{
     using value_type = T;
@@ -69,6 +70,7 @@ struct DescendingLinkedListTrait{
     using Comp = greater<T>;
 };
 
+// Contenedor Principal LinkedList
 template <typename Trait>
 class LinkedList{
 public:
@@ -87,32 +89,54 @@ private:
     Comp   m_comp;
     mutable shared_mutex m_mtx;
     void internal_insert(Node* &pPrev, const value_type &value, Ref ref);
+
 public:
     LinkedList() {}
+    
+    // Copy Constructor
     LinkedList(const LinkedList &other) : m_pRoot(nullptr), m_tail(nullptr), m_size(0) {
-        //t13:concu
         shared_lock<shared_mutex> lock(other.m_mtx); 
         for (Node* curr = other.m_pRoot; curr != nullptr; curr = curr->getNext()) {
             push_back(curr->getData(), curr->getRef());
         }
     }
     
-    //t2:movve construtor
-    LinkedList(LinkedList &&other): m_pRoot(nullptr), m_tail(nullptr), m_size(0) {
-        //t13:concurrencia
+    // Move Constructor
+    LinkedList(LinkedList &&other) : m_pRoot(nullptr), m_tail(nullptr), m_size(0) {
         unique_lock<shared_mutex> lockOther(other.m_mtx);
-        m_pRoot=other.m_pRoot;
-        m_tail=other.m_tail;
-        m_size=other.m_size;
-        other.m_pRoot=nullptr;
-        other.m_tail=nullptr;
-        other.m_size=0;
+        m_pRoot = std::exchange(other.m_pRoot, nullptr);
+        m_tail  = std::exchange(other.m_tail, nullptr);
+        m_size  = std::exchange(other.m_size, 0);
     }
-     //t3:: edestructor seguro
+
+    // Copy Assignment
+    LinkedList& operator=(const LinkedList &other) {
+        if (this != &other) {
+            while (m_size > 0) pop_front(); 
+            shared_lock<shared_mutex> lock(other.m_mtx);
+            for (Node* curr = other.m_pRoot; curr != nullptr; curr = curr->getNext()) {
+                push_back(curr->getData(), curr->getRef());
+            }
+        }
+        return *this;
+    }
+    
+    // Move Assignment
+    LinkedList& operator=(LinkedList &&other) {
+        if (this != &other) {
+            while (m_size > 0) pop_front(); 
+            unique_lock<shared_mutex> lockOther(other.m_mtx);
+            m_pRoot = std::exchange(other.m_pRoot, nullptr);
+            m_tail  = std::exchange(other.m_tail, nullptr);
+            m_size  = std::exchange(other.m_size, 0);
+        }
+        return *this;
+    }
+    
+    // Destructor Seguro
     virtual ~LinkedList() {
-        //t13:concurrencia
         unique_lock<shared_mutex>lock(m_mtx);
-        Node* current=m_pRoot;
+        Node* current = m_pRoot;
         while(current){
             Node* next = current->getNext();
             delete current;
@@ -122,50 +146,75 @@ public:
         m_tail = nullptr;
         m_size = 0;
     }
+
+    // Operaciones
     virtual void    push_front(value_type value, Ref ref);
-    virtual void    pop_front();
+    virtual std::tuple<value_type, Ref> pop_front();
     virtual void    push_back(value_type value, Ref ref);
-    virtual void    pop_back();
+    virtual std::tuple<value_type, Ref> pop_back();
     virtual void    insert(const value_type &value, Ref ref);
     
     virtual value_type& operator[](size_t index);
     virtual size_t  size() const;
-    //virtual string  toString() const;
 
     forward_iterator begin() { return forward_iterator(this, m_pRoot); }
     forward_iterator end()   { return forward_iterator(this, nullptr); }
-    //t12: Foreach
+
+    // ForEach
     template <typename Func, typename... Args>
     void ForEach(Func func, Args &&... args) {
-        //t13:concu
         unique_lock<shared_mutex> lock(m_mtx);
         if (m_size == 0) return;
-        ::ForEach(begin(), end(), func, std::forward<Args>(args)... );
+        for(auto& item : *this) {
+            func(item, std::forward<Args>(args)...);
+        }
     }
 
-    //t11: operator<<
+    // Operadores I/O
     friend ostream& operator<<(ostream& os, const LinkedList& list) {
-        //t13:concurencia
         shared_lock<shared_mutex>lock(list.m_mtx); 
-        os<<"[";
-        Node* act =list.m_pRoot;
+        os << "[";
+        Node* act = list.m_pRoot;
         while(act){
-            os<<"("<<act->getData()<<","<<act->getRef()<<")";
-                if(act->getNext())os<<",";
-                act=act->getNext();
+            os << "(" << act->getData() << "," << act->getRef() << ")";
+            if(act->getNext()) os << ",";
+            act = act->getNext();
         }
-        os<<"]";
+        os << "]";
         return os;
+    }
+
+    friend istream& operator>>(istream& is, LinkedList& list) {
+        char ch;
+        if (!(is >> ch) || ch != '[') {
+            is.clear(ios_base::failbit);
+            return is;
+        }
+        value_type val;
+        Ref ref;
+        char comma, parenClose;
+        while (is >> ch && ch != ']') {
+            if (ch == '(') {
+                if (is >> val >> comma >> ref >> parenClose) {
+                    if (comma == ',' && parenClose == ')') {
+                        list.push_back(val, ref);
+                    }
+                }
+            }
+        }
+        return is;
     }
 };
 
+// Implementacion de Metodos de Lista
 template <typename Trait>
 void LinkedList<Trait>::internal_insert(Node* &pPrev, const value_type &value, Ref ref){
     if(!pPrev || m_comp(value, pPrev->getDataRef())){
         pPrev = new Node(value, ref, pPrev);
         m_size++;
         if(pPrev->getNext() == nullptr){
-            m_tail = pPrev;}
+            m_tail = pPrev;
+        }
         return;
     }
     internal_insert(pPrev->getNextRef(), value, ref);
@@ -173,60 +222,72 @@ void LinkedList<Trait>::internal_insert(Node* &pPrev, const value_type &value, R
 
 template <typename Trait>
 void LinkedList<Trait>::insert(const value_type &value, Ref ref){
-    unique_lock<shared_mutex> lock(m_mtx); //t13
+    unique_lock<shared_mutex> lock(m_mtx); 
     internal_insert(m_pRoot, value, ref);
     if(m_size == 1){
         m_tail = m_pRoot;
     }else{
-        Node* act=m_pRoot;
+        Node* act = m_pRoot;
         while(act && act->getNext()){
-            act=act->getNext();
+            act = act->getNext();
         }
-        m_tail=act;
+        m_tail = act;
     }
 }
-//t5: push_front
+
+// PushFront
 template <typename Trait>
 void LinkedList<Trait>::push_front(value_type value, Ref ref) {
-    unique_lock<shared_mutex> lock(m_mtx); //t13:concu
+    unique_lock<shared_mutex> lock(m_mtx); 
     m_pRoot = new Node(value, ref, m_pRoot);
     if(m_size == 0){
         m_tail = m_pRoot;
     }
     m_size++;
 }
-//t7:push_back
+
+// PushBack
 template <typename Trait>
 void LinkedList<Trait>::push_back(value_type value, Ref ref) {
-    unique_lock<shared_mutex> lock(m_mtx); //t13:concu
+    unique_lock<shared_mutex> lock(m_mtx); 
     Node* newNode = new Node(value, ref);
-    if(m_size== 0){
-        m_pRoot=newNode;
-        m_tail=newNode;
+    if(m_size == 0){
+        m_pRoot = newNode;
+        m_tail = newNode;
     }else{
         m_tail->setNext(newNode);
-        m_tail=newNode;
+        m_tail = newNode;
     }
     m_size++;
 }
-//t6:pop_front
+
+// pop_front: Retornar par de datos (Data y Ref) de la cabeza y eliminar el nodo
 template <typename Trait>
-void LinkedList<Trait>::pop_front() {
-    unique_lock<shared_mutex> lock(m_mtx); //t13:concu
-    Node* temp=m_pRoot;
-    m_pRoot=m_pRoot->getNext();
+std::tuple<typename LinkedList<Trait>::value_type, Ref> LinkedList<Trait>::pop_front() {
+    unique_lock<shared_mutex> lock(m_mtx); 
+    if (!m_pRoot) throw runtime_error("La lista esta vacia");
+    
+    Node* temp = m_pRoot;
+    auto result = std::make_tuple(temp->getData(), temp->getRef());
+    
+    m_pRoot = m_pRoot->getNext();
     delete temp;
-    m_size=m_size-1;
-    if (m_size == 0){
-        m_tail = nullptr;
-    } 
+    m_size--;
+    
+    if (m_size == 0) m_tail = nullptr;
+    return result;
 }
-//t8: pop_back
+
+// pop_back: Retornar par de datos (Data y Ref) del final y eliminar el nodo
 template <typename Trait>
-void LinkedList<Trait>::pop_back() {
-    unique_lock<shared_mutex> lock(m_mtx); //t13:concu
-    if (!m_pRoot) return;
+std::tuple<typename LinkedList<Trait>::value_type, Ref> LinkedList<Trait>::pop_back() {
+    unique_lock<shared_mutex> lock(m_mtx); 
+    if (!m_pRoot) throw runtime_error("La lista esta vacia");
+    
+    std::tuple<value_type, Ref> result;
+
     if (m_pRoot == m_tail) {
+        result = std::make_tuple(m_pRoot->getData(), m_pRoot->getRef());
         delete m_pRoot;
         m_pRoot = m_tail = nullptr;
     } else {
@@ -234,18 +295,19 @@ void LinkedList<Trait>::pop_back() {
         while (act->getNext() != m_tail) {
             act = act->getNext();
         }
+        result = std::make_tuple(m_tail->getData(), m_tail->getRef());
         delete m_tail;
         m_tail = act;
         m_tail->setNext(nullptr);
     }
-    m_size=m_size-1;
+    m_size--;
+    return result;
 }
 
-//t9:operator[]
 template <typename Trait>
 typename LinkedList<Trait>::value_type& LinkedList<Trait>::operator[](size_t index) {
-    //t13
     shared_lock<shared_mutex> lock(m_mtx); 
+    if (index >= m_size) throw out_of_range("Indice fuera de rango");
     Node* act = m_pRoot;
     for (size_t i = 0; i < index; ++i) {
         act = act->getNext();
@@ -255,19 +317,8 @@ typename LinkedList<Trait>::value_type& LinkedList<Trait>::operator[](size_t ind
 
 template <typename Trait>
 size_t LinkedList<Trait>::size() const {
-    shared_lock<shared_mutex> lock(m_mtx); //t13
+    shared_lock<shared_mutex> lock(m_mtx); 
     return m_size;
-}
-
-//t10:operator>>
-template <typename Trait>
-istream& operator>>(istream& is, LinkedList<Trait>& list) {
-    typename Trait::value_type val;
-    Ref ref;
-    if (is >> val >> ref) {
-        list.push_back(val, ref);
-    }
-    return is;
 }
 
 #endif // __LINKEDLIST_H__

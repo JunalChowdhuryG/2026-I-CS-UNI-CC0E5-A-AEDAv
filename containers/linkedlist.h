@@ -33,10 +33,10 @@ public:
 };
 
 // Linked List Node
-template <typename T, typename NodeType = LLNode<T>>
+template <typename T, typename NodeType = void>
 class LLNode{
 protected:
-    using Node = NodeType;
+    using Node = conditional_t<is_void_v<NodeType>, LLNode, NodeType>;
 private:
     T   m_data;
     Ref m_ref;

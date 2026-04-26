@@ -59,18 +59,10 @@ public:
 
 // Traits de Ordenamiento
 template <typename T>
-struct AscendingLinkedListTrait{
-    using value_type = T;
-    using Node = LLNode<T>;
-    using Comp = less<T>;
-};
+struct AscendingLinkedListTrait : BaseTrait<T, less<T>, LLNode<T>>{};
 
 template <typename T>
-struct DescendingLinkedListTrait{
-    using value_type = T;
-    using Node = LLNode<T>;
-    using Comp = greater<T>;
-};
+struct DescendingLinkedListTrait : BaseTrait<T, greater<T>, LLNode<T>>{};
 
 // Contenedor Principal LinkedList
 template <typename Trait>
@@ -90,7 +82,17 @@ private:
     size_t m_size = 0;
     Comp   m_comp;
     mutable shared_mutex m_mtx;
-    void internal_insert(Node* &pPrev, const value_type &value, Ref ref);
+    void internal_insert(Node* &pPrev, const value_type &value, Ref ref) {
+        if (!pPrev || m_comp(value, pPrev->getDataRef())){
+            Node *newNode = new Node(value, ref, pPrev);
+            pPrev = newNode;
+            m_size++;
+            if (newNode->getNext() == nullptr)
+                m_tail = newNode;
+            return;
+        }
+        internal_insert(pPrev->getNextRef(), value, ref);
+    }
 
 public:
     LinkedList() {}
@@ -199,7 +201,7 @@ public:
             if (ch == '(') {
                 if (is >> val >> comma >> ref >> parenClose) {
                     if (comma == ',' && parenClose == ')') {
-                        list.push_back(val, ref);
+                        list.insert(val, ref);
                     }
                 }
             }
@@ -208,32 +210,12 @@ public:
     }
 };
 
-// Implementacion de Metodos de Lista
-template <typename Trait>
-void LinkedList<Trait>::internal_insert(Node* &pPrev, const value_type &value, Ref ref){
-    if(!pPrev || m_comp(value, pPrev->getDataRef())){
-        pPrev = new Node(value, ref, pPrev);
-        m_size++;
-        if(pPrev->getNext() == nullptr){
-            m_tail = pPrev;
-        }
-        return;
-    }
-    internal_insert(pPrev->getNextRef(), value, ref);
-}
-
 template <typename Trait>
 void LinkedList<Trait>::insert(const value_type &value, Ref ref){
     unique_lock<shared_mutex> lock(m_mtx); 
     internal_insert(m_pRoot, value, ref);
     if(m_size == 1){
         m_tail = m_pRoot;
-    }else{
-        Node* act = m_pRoot;
-        while(act && act->getNext()){
-            act = act->getNext();
-        }
-        m_tail = act;
     }
 }
 

@@ -33,7 +33,7 @@ public:
 };
 
 // Linked List Node
-template <typename T, typename NodeType = LLNode<T>>
+template <typename T>
 class LLNode{
 protected:
     using Node = NodeType;
@@ -52,24 +52,19 @@ public:
     void   setData(T data) { m_data = data; }
     Ref    getRef() const  { return m_ref; }
     void   setRef(Ref ref) { m_ref = ref; }
-    Node* getNext() const { return m_next; }
+    Node*  ngetNext() const { return m_next; }
     Node*& getNextRef()    { return m_next; }
     void   setNext(Node *next) { m_next = next; }
 };
 
 // Traits de Ordenamiento
 template <typename T>
-struct AscendingLinkedListTrait{
-    using value_type = T;
-    using Node = LLNode<T>;
-    using Comp = less<T>;
+struct AscendingLinkedListTrait: public BaseTrait<LLNode<T>, less<T>>{
 };
 
 template <typename T>
-struct DescendingLinkedListTrait{
-    using value_type = T;
-    using Node = LLNode<T>;
-    using Comp = greater<T>;
+struct DescendingLinkedListTrait : public BaseTrait<LLNode<T>, greater<T>>{
+
 };
 
 // Contenedor Principal LinkedList

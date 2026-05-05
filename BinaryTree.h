@@ -74,6 +74,7 @@ public:
         }
 };
 
+// Codigo hecho en clase
 template<typename Trait>
 void BinaryTree<Trait>::internal_insert(Node* &pNode, value_type data, Ref ref){
     if( pNode == nullptr ){
@@ -83,4 +84,4 @@ void BinaryTree<Trait>::internal_insert(Node* &pNode, value_type data, Ref ref){
     auto branch = !m_comp(pNode->m_data, data);
     internal_insert(pNode->m_pChild[branch], data, ref);
 }
-#endif // __BINARYTREE_H__
+#endif // __BINARYTREE_H__ 

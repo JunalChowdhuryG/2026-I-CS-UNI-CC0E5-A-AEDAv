@@ -19,13 +19,11 @@ class DLLNode : public LLNode<T, DLLNode<T>>{
 };
 
 template <typename T>
-struct AscendingDLLTrait : BaseTrait<T, less<T>>{
-    using Node = DLLNode<T>;
+struct AscendingDLLTrait : BaseTrait<DLLNode<T>, less<T>>{
 };
 
 template <typename T>
-struct DescendingDLLTrait : BaseTrait<T, greater<T>>{
-    using Node = DLLNode<T>;
+struct DescendingDLLTrait : BaseTrait<DLLNode<T>, greater<T>>{
 };
 
 template <typename Trait>

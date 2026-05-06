@@ -7,7 +7,6 @@
 #include <thread>
 using namespace std;
 
-
 template<typename T>
 struct BinaryTreeNode{
     T m_data;
@@ -32,6 +31,7 @@ class BinaryTree{
         ~BinaryTree() {}
         
         // No sirve ... muy anticuado y tiene muchos casos especiales
+        // Removerlo
         void insert(value_type data){
             Node *newNode = new Node(data);
             if(m_pRoot == nullptr){
@@ -56,10 +56,10 @@ class BinaryTree{
             }
         }
 protected:
-        void internal_insert(Node* &pNode, value_type data, Ref ref);
+        void internal_insert(Node* &pNode, const value_type &data, Ref ref);
 
 public: 
-        void insert(value_type data, Ref ref){
+        void insert(const value_type &data, Ref ref){
             internal_insert(m_pRoot, data, ref);
         }
         void print(){
@@ -76,7 +76,7 @@ public:
 
 // Codigo hecho en clase
 template<typename Trait>
-void BinaryTree<Trait>::internal_insert(Node* &pNode, value_type data, Ref ref){
+void BinaryTree<Trait>::internal_insert(Node* &pNode, const value_type &data, Ref ref){
     if( pNode == nullptr ){
         pNode = new Node(data);
         return;

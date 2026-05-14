@@ -3,22 +3,22 @@
 
 #include "linkedlist.h"
 
+// ─── DLLNode ──────────────────────────────────────────────────────────────────
+// Reutiliza LLNode (m_data, m_ref, m_next) y agrega solo m_prev.
+// value_type es requerido por AscendingTrait / DescendingTrait.
 template <typename T>
 class DLLNode : public LLNode<T, DLLNode<T>> {
     DLLNode *m_prev;
 public:
+    using value_type = T;   // requerido por BaseTrait
     DLLNode() : LLNode<T, DLLNode<T>>(), m_prev(nullptr) {}
     DLLNode(T data, Ref ref, DLLNode *next = nullptr, DLLNode *prev = nullptr)
         : LLNode<T, DLLNode<T>>(data, ref, next), m_prev(prev) {}
-    DLLNode *getPrev() const    { return m_prev; }
-    void setPrev(DLLNode *prev) { m_prev = prev; }
+    DLLNode *getPrev() const     { return m_prev; }
+    void     setPrev(DLLNode *p) { m_prev = p;    }
 };
 
-template <typename T>
-struct AscendingDLLTrait  : BaseTrait<T, less<T>,    DLLNode<T>> {};
-template <typename T>
-struct DescendingDLLTrait : BaseTrait<T, greater<T>, DLLNode<T>> {};
-
+// ─── Backward iterator (reutiliza general_iterator, solo cambia operator++) ───
 template <typename Container>
 class DLLBackwardIterator
     : public general_iterator<Container, DLLBackwardIterator<Container>> {
@@ -34,6 +34,7 @@ public:
     }
 };
 
+// ─── DoubleLinkedList ─────────────────────────────────────────────────────────
 template <typename Trait>
 class DoubleLinkedList : public LinkedList<Trait> {
 public:
@@ -42,8 +43,9 @@ public:
     using MySelf            = DoubleLinkedList<Trait>;
     using backward_iterator = DLLBackwardIterator<MySelf>;
     friend backward_iterator;
+
     DoubleLinkedList() : LinkedList<Trait>() {}
-    //push back
+
     void push_back(value_type value, Ref ref) override {
         unique_lock<shared_mutex> lock(this->m_mtx);
         Node *newNode = new Node(value, ref);
@@ -55,16 +57,16 @@ public:
         }
         this->m_size++;
     }
-    //push front
+
     void push_front(value_type value, Ref ref) override {
         unique_lock<shared_mutex> lock(this->m_mtx);
         Node *newNode = new Node(value, ref, this->m_pRoot);
         if (this->m_size == 0) { this->m_tail = newNode; }
-        else { this->m_pRoot->setPrev(newNode); }
+        else                   { this->m_pRoot->setPrev(newNode); }
         this->m_pRoot = newNode;
         this->m_size++;
     }
-    //pop front
+
     tuple<value_type, Ref> pop_front() override {
         unique_lock<shared_mutex> lock(this->m_mtx);
         if (!this->m_pRoot) throw runtime_error("lista vacia");
@@ -77,7 +79,7 @@ public:
         this->m_size--;
         return result;
     }
-    //pop back
+
     tuple<value_type, Ref> pop_back() override {
         unique_lock<shared_mutex> lock(this->m_mtx);
         if (!this->m_pRoot) throw runtime_error("lista vacia");
@@ -90,7 +92,7 @@ public:
         this->m_size--;
         return result;
     }
-    //insert
+
     void insert(const value_type &value, Ref ref) override {
         unique_lock<shared_mutex> lock(this->m_mtx);
         Node *newNode = new Node(value, ref);
@@ -111,9 +113,10 @@ public:
         }
         this->m_size++;
     }
+
     backward_iterator rbegin() { return backward_iterator(this, this->m_tail); }
     backward_iterator rend()   { return backward_iterator(this, nullptr); }
-    //reverse for each
+
     template <typename Func, typename... Args>
     void ReverseForEach(Func func, Args &&...args) {
         unique_lock<shared_mutex> lock(this->m_mtx);

@@ -17,9 +17,12 @@
 #include "traits.h"
 using namespace std;
 
+// ─── LLNode ───────────────────────────────────────────────────────────────────
+// value_type es requerido por BaseTrait (lo deduce de _Node::value_type).
 template <typename T, typename DerivedNode = void>
 class LLNode {
 public:
+    using value_type = T;   // requerido por AscendingTrait / DescendingTrait
     using Node = std::conditional_t<std::is_void_v<DerivedNode>, LLNode, DerivedNode>;
 protected:
     T     m_data;
@@ -27,30 +30,29 @@ protected:
     Node *m_next;
 public:
     LLNode() : m_data(T()), m_ref(Ref()), m_next(nullptr) {}
-    LLNode(T data, Ref ref, Node *next = nullptr): m_data(data), m_ref(ref), m_next(next) {}
+    LLNode(T data, Ref ref, Node *next = nullptr) : m_data(data), m_ref(ref), m_next(next) {}
     virtual ~LLNode() {}
-    T      getData()  const    { return m_data; }
-    T     &getDataRef()        { return m_data; }
-    void   setData(T data)     { m_data = data; }
-    Ref    getRef()   const    { return m_ref; }
-    void   setRef(Ref ref)     { m_ref = ref; }
-    Node  *getNext()  const    { return m_next; }
-    Node *&getNextRef()        { return m_next; }
-    void   setNext(Node *next) { m_next = next; }
+    T      getData()    const    { return m_data; }
+    T     &getDataRef()          { return m_data; }
+    void   setData(T data)       { m_data = data; }
+    Ref    getRef()     const    { return m_ref;  }
+    void   setRef(Ref ref)       { m_ref = ref;   }
+    Node  *getNext()    const    { return m_next; }
+    Node *&getNextRef()          { return m_next; }
+    void   setNext(Node *next)   { m_next = next; }
 };
 
-template <typename T>
-struct AscendingLinkedListTrait  : BaseTrait<T, less<T>,    LLNode<T>> {};
-template <typename T>
-struct DescendingLinkedListTrait : BaseTrait<T, greater<T>, LLNode<T>> {};
-
+// ─── Forward iterator (listas no circulares) ──────────────────────────────────
 template <typename Container>
-class LinkedListForwardIterator: public general_iterator<Container, LinkedListForwardIterator<Container>> {
+class LinkedListForwardIterator
+    : public general_iterator<Container, LinkedListForwardIterator<Container>> {
 public:
     using MySelf = LinkedListForwardIterator<Container>;
     using Parent = general_iterator<Container, MySelf>;
     using Parent::Parent;
 };
+
+// ─── LinkedList ───────────────────────────────────────────────────────────────
 template <typename Trait>
 class LinkedList {
 public:
@@ -67,6 +69,7 @@ protected:
     size_t        m_size  = 0;
     Comp          m_comp;
     mutable shared_mutex m_mtx;
+
     virtual void internal_insert(Node *&pPrev, const value_type &value, Ref ref) {
         if (!pPrev || m_comp(value, pPrev->getDataRef())) {
             Node *newNode = new Node(value, ref, pPrev);
@@ -81,8 +84,8 @@ protected:
 public:
     LinkedList() {}
 
-    //copy constructor
-    LinkedList(const LinkedList &other): m_pRoot(nullptr), m_tail(nullptr), m_size(0){
+    // copy constructor
+    LinkedList(const LinkedList &other) : m_pRoot(nullptr), m_tail(nullptr), m_size(0) {
         shared_lock<shared_mutex> lock(other.m_mtx);
         Node *curr = other.m_pRoot;
         for (size_t i = 0; i < other.m_size; ++i) {
@@ -91,8 +94,8 @@ public:
         }
     }
 
-    //move constructor
-    LinkedList(LinkedList &&other): m_pRoot(nullptr), m_tail(nullptr), m_size(0){
+    // move constructor
+    LinkedList(LinkedList &&other) : m_pRoot(nullptr), m_tail(nullptr), m_size(0) {
         unique_lock<shared_mutex> lock(other.m_mtx);
         m_pRoot = exchange(other.m_pRoot, nullptr);
         m_tail  = exchange(other.m_tail,  nullptr);
@@ -123,8 +126,8 @@ public:
         return *this;
     }
 
-    //destructor seguro
     virtual ~LinkedList() { clear(); }
+
     virtual void clear() {
         unique_lock<shared_mutex> lock(m_mtx);
         Node *curr = m_pRoot;
@@ -138,28 +141,27 @@ public:
         m_size  = 0;
     }
 
-    //insert
     virtual void insert(const value_type &value, Ref ref) {
         unique_lock<shared_mutex> lock(m_mtx);
         internal_insert(m_pRoot, value, ref);
         if (m_size == 1) m_tail = m_pRoot;
     }
-    //push front
+
     virtual void push_front(value_type value, Ref ref) {
         unique_lock<shared_mutex> lock(m_mtx);
         m_pRoot = new Node(value, ref, m_pRoot);
         if (m_size == 0) m_tail = m_pRoot;
         m_size++;
     }
-    //push back
+
     virtual void push_back(value_type value, Ref ref) {
         unique_lock<shared_mutex> lock(m_mtx);
         Node *newNode = new Node(value, ref);
         if (m_size == 0) { m_pRoot = m_tail = newNode; }
-        else { m_tail->setNext(newNode); m_tail = newNode; }
+        else             { m_tail->setNext(newNode); m_tail = newNode; }
         m_size++;
     }
-    //pop front
+
     virtual tuple<value_type, Ref> pop_front() {
         unique_lock<shared_mutex> lock(m_mtx);
         if (!m_pRoot) throw runtime_error("lista vacia");
@@ -171,7 +173,7 @@ public:
         if (m_size == 0) m_tail = nullptr;
         return result;
     }
-    //pop back
+
     virtual tuple<value_type, Ref> pop_back() {
         unique_lock<shared_mutex> lock(m_mtx);
         if (!m_pRoot) throw runtime_error("lista vacia");
@@ -189,7 +191,7 @@ public:
         m_size--;
         return result;
     }
-    // operator[]
+
     virtual value_type &operator[](size_t index) {
         shared_lock<shared_mutex> lock(m_mtx);
         if (index >= m_size) throw out_of_range("indice fuera de rango");
@@ -197,16 +199,19 @@ public:
         for (size_t i = 0; i < index; ++i) act = act->getNext();
         return act->getDataRef();
     }
-    // size
+
     virtual size_t size() const {
         shared_lock<shared_mutex> lock(m_mtx);
         return m_size;
     }
 
-    virtual forward_iterator begin() const {return forward_iterator(const_cast<MySelf*>(this), m_pRoot);}
-    virtual forward_iterator end() const {return forward_iterator(const_cast<MySelf*>(this), nullptr);}
+    virtual forward_iterator begin() const {
+        return forward_iterator(const_cast<MySelf *>(this), m_pRoot);
+    }
+    virtual forward_iterator end() const {
+        return forward_iterator(const_cast<MySelf *>(this), nullptr);
+    }
 
-    //ForEach
     template <typename Func, typename... Args>
     void ForEach(Func func, Args &&...args) {
         unique_lock<shared_mutex> lock(m_mtx);
@@ -218,7 +223,8 @@ public:
         }
     }
 
-    //operator<<
+    // operator<< reutilizado por todos los hijos: usa m_size para iterar,
+    // por lo que funciona igual para listas circulares y no circulares.
     friend ostream &operator<<(ostream &os, const LinkedList &list) {
         shared_lock<shared_mutex> lock(list.m_mtx);
         os << "[";
@@ -233,13 +239,11 @@ public:
         return os;
     }
 
-    //operator>>
+    // operator>> reutilizado por todos los hijos: llama a insert() virtual,
+    // por lo que cada hijo aplica su propio orden / circularidad.
     friend istream &operator>>(istream &is, LinkedList &list) {
         char ch;
-        if (!(is >> ch) || ch != '[') {
-            is.clear(ios_base::failbit);
-            return is;
-        }
+        if (!(is >> ch) || ch != '[') { is.clear(ios_base::failbit); return is; }
         value_type val; Ref ref; char comma, parenClose;
         while (is >> ch && ch != ']')
             if (ch == '(')

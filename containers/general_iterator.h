@@ -38,13 +38,37 @@ public:
         return a.getNode() != b.getNode();
     }
 
-    // operator* devuelve value_type (dato) — compatible con el uso existente
     value_type &operator*() { return m_pNode->getDataRef(); }
 
-    // operator++ por defecto: avanza con getNext()
-    // CLL/CDLL lo redefinen para detectar la vuelta
     IteratorBase &operator++() {
         if (m_pNode) m_pNode = m_pNode->getNext();
+        return *(IteratorBase *)this;
+    }
+};
+
+// ─── circular_iterator ────────────────────────────────────────────────────────
+// Extiende general_iterator agregando m_pRoot para detectar la vuelta completa.
+// begin(root): m_pNode = root  -> hay elementos que recorrer
+// end(root):   m_pNode = nullptr (centinela)
+// operator++: cuando next == m_pRoot pone m_pNode = nullptr == end()
+//
+// Reutiliza getNext() del mismo nodo de LLNode / DLLNode sin duplicar logica.
+template <typename Container, class IteratorBase>
+class circular_iterator : public general_iterator<Container, IteratorBase> {
+public:
+    using Node = typename Container::Node;  // typename requerido en contexto de template
+protected:
+    Node *m_pRoot;
+public:
+    circular_iterator(Container *pContainer, Node *pNode, Node *pRoot)
+        : general_iterator<Container, IteratorBase>(pContainer, pNode),
+          m_pRoot(pRoot) {}
+
+    IteratorBase &operator++() {
+        if (this->m_pNode) {
+            Node *next    = this->m_pNode->getNext();
+            this->m_pNode = (next == m_pRoot) ? nullptr : next;
+        }
         return *(IteratorBase *)this;
     }
 };

@@ -12,12 +12,13 @@
 using namespace std;
 
 //BinaryTreeNode
-template<typename T>
+template<typename T, typename DerivedNode = void>
 struct BinaryTreeNode{
-    using value_type  = T;
+    using value_type = T;
+    using Node = std::conditional_t<std::is_void_v<DerivedNode>,BinaryTreeNode, DerivedNode>;
     T m_data;
     Ref            m_ref;
-    BinaryTreeNode *m_pChild[2];
+    Node *m_pChild[2];
     BinaryTreeNode(T data, Ref ref): m_data(data), m_ref(ref), m_pChild{nullptr, nullptr} {}
 };
 
@@ -123,7 +124,7 @@ protected:
     virtual Node* internal_search(Node* pNode, const value_type& data) const {
         if (!pNode) return nullptr;
         if (!m_comp(data, pNode->m_data) && !m_comp(pNode->m_data, data))
-            return pNode;
+            return pNode; 
         auto branch = !m_comp(data, pNode->m_data);
         return internal_search(pNode->m_pChild[branch], data);
     }
@@ -169,9 +170,9 @@ protected:
         oss << "[";
         for (size_t i = 0; i < s.size(); ++i) {
             if (i) oss << ",";
-            oss << "(" << s[i]->m_data << "," << s[i]->m_ref << ")";
+            oss<< "("<< s[i]->m_data<< ","<< s[i]->m_ref<< ")";
         }
-        oss << "]";
+        oss<< "]";
         return oss.str();
     }
 
@@ -202,7 +203,7 @@ public:
         if (this != &other) {
             clear();
             unique_lock<shared_mutex> lock(other.m_mtx);
-            m_pRoot = internal_copy(other.m_pRoot);
+            m_pRoot = exchange(other.m_pRoot, nullptr);
         }
         return *this;
     }
@@ -238,15 +239,15 @@ public:
     //t6 t7 vista inorder
     InorderView inorder() const {
         shared_lock<shared_mutex> lock(m_mtx);
-        Stack<Node*> s; 
+        Stack<Node*> s;
         fill_inorder(m_pRoot, s);
         return make_view(s);
     }
-
+    
     //t13 t14 vista preorder
     PreorderView preorder() const {
         shared_lock<shared_mutex> lock(m_mtx);
-        Stack<Node*> s; 
+        Stack<Node*> s;
         fill_preorder(m_pRoot, s);
         return make_view(s);
     }
@@ -254,7 +255,7 @@ public:
     //t15 t16 vista postorder
     PostorderView postorder() const {
         shared_lock<shared_mutex> lock(m_mtx);
-        Stack<Node*> s; 
+        Stack<Node*> s;
         fill_postorder(m_pRoot, s);
         return make_view(s);
     }
@@ -284,7 +285,7 @@ public:
         shared_lock<shared_mutex> lock(tree.m_mtx);
         Stack<Node*> s;
         tree.fill_inorder(tree.m_pRoot, s);
-        os << tree.traversalToString(s);
+        os<< tree.traversalToString(s);
         return os;
     }
 
@@ -299,6 +300,39 @@ public:
                     if (comma == ',' && paren == ')')
                         tree.insert(val, ref);
         return is;
+    }
+
+    //printTree
+    void printTree(ostream& os = cout) const {
+        shared_lock<shared_mutex> lock(m_mtx);
+        if (!m_pRoot) { os<< "(arbol vacio)"<< endl; return; }
+        Vector<Node*> queue(64);
+        size_t front = 0;
+        queue.push_back(m_pRoot, 0);
+        while (front < queue.size()) {
+            size_t level_size = queue.size() - front;
+            bool   all_null   = true;
+            for (size_t i = 0; i < level_size; ++i) {
+                Node* n = queue[front + i];
+                if (n) { all_null = false; break; }
+            }
+            if (all_null) break;
+            os<< "  ";
+            for (size_t i = 0; i < level_size; ++i) {
+                Node* n = queue[front++];
+                if (n) {
+                    os<< n->m_data;
+                    queue.push_back(n->m_pChild[0], 0);
+                    queue.push_back(n->m_pChild[1], 0);
+                } else {
+                    os<< "_";
+                    queue.push_back(nullptr, 0);
+                    queue.push_back(nullptr, 0);
+                }
+                os<< " ";
+            }
+            os<< endl;
+        }
     }
 };
 

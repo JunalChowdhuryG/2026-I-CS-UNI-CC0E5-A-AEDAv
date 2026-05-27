@@ -42,7 +42,7 @@ void LinkedListDemo() {
     cout<<endl;
 
     LinkedList<AscendingTrait<LLNode<T1>>> lc;
-    auto w = [&lc](int id){ for(int i=0;i<1000;i++) lc.push_front(i,id); };
+    auto w = [&lc](auto id){ for(auto i=0;i<1000;i++) lc.push_front(i,id); };
     thread t1(w,1),t2(w,2),t3(w,3),t4(w,4),t5(w,5);
     t1.join();t2.join();t3.join();t4.join();t5.join();
     cout<<"concurrencia (esperado 5000):"<<lc.size()<<endl;

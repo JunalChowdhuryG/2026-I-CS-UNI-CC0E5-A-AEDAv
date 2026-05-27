@@ -1,7 +1,7 @@
 #ifndef __TRAITS_H__
 #define __TRAITS_H__
 #include <functional> // para less y greater
-
+using namespace std;
 template <typename _Node, typename _Comp>
 struct BaseTrait{
     using Node       = _Node;

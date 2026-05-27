@@ -6,8 +6,11 @@
 #include <stdexcept>
 #include <tuple>
 #include <shared_mutex>
+#include <mutex>
+#include <utility>
 #include <fstream>
 #include "vector.h"
+#include <functional>
 #include "../types.h"
 #include "traits.h"
 using namespace std;
@@ -35,9 +38,19 @@ public:
     using MySelf     = Heap<Trait>;
 
 private:
-    Vector<Trait>        m_vec;
+    Node *m_data;
+    size_t m_size;
+    size_t m_capacity;
     Comp                 m_comp;
     mutable shared_mutex m_mtx;
+
+    void resize() {
+        m_capacity = m_capacity * 2;
+        auto* nd   = new Node[m_capacity];
+        for (size_t i = 0; i < m_size; ++i) nd[i] = m_data[i];
+        delete[] m_data;
+        m_data = nd;
+    }
 
     //indices
     size_t parent(size_t i) const { return (i - 1) / 2; }
@@ -46,12 +59,12 @@ private:
 
     //swap
     void swap(size_t i, size_t j) {
-        std::swap(m_vec[i], m_vec[j]);
+        std::swap(m_data[i], m_data[j]);
     }
 
     //heapifyUp
     void heapifyUp(size_t i) {
-        while (i > 0 && m_comp(m_vec[i].m_data, m_vec[parent(i)].m_data)) {
+        while (i > 0 && m_comp(m_data[i].m_data, m_data[parent(i)].m_data)) {
             swap(i, parent(i));
             i = parent(i);
         }
@@ -59,26 +72,25 @@ private:
 
     //heapifyDown
     void heapifyDown(size_t i) {
-        size_t n    = m_vec.size();
-        size_t best = i;
-        size_t l    = left(i);
-        size_t r    = right(i);
-        if (l < n && m_comp(m_vec[l].m_data, m_vec[best].m_data)) best = l;
-        if (r < n && m_comp(m_vec[r].m_data, m_vec[best].m_data)) best = r;
+        auto best = i;
+        auto l    = left(i);
+        auto r    = right(i);
+        if (l < m_size && m_comp(m_data[l].m_data, m_data[best].m_data)) best = l;
+        if (r < m_size && m_comp(m_data[r].m_data, m_data[best].m_data)) best = r;
         if (best != i) { swap(i, best); heapifyDown(best); }
     }
 
-    //toString arbo
+    //toString arbol
     string treeToString() const {
-        size_t n = m_vec.size();
-        if (n == 0) return "  (vacio)";
+        if (m_size == 0) return "  (vacio)\n";
         ostringstream oss;
-        size_t level_start = 0;
-        size_t level_size  = 1;
-        while (level_start < n) {
+        auto level_start = size_t{0};
+        auto level_size  = size_t{1};
+        while (level_start < m_size) {
             oss << "  ";
-            for (size_t i = level_start; i < min(level_start + level_size, n); ++i)
-                oss << m_vec[i].m_data << " ";
+            auto end = min(level_start + level_size, m_size);
+            for (auto i = level_start; i < end; ++i)
+                oss << m_data[i].m_data << " ";
             oss << "\n";
             level_start += level_size;
             level_size  *= 2;
@@ -88,24 +100,34 @@ private:
 
 public:
     //constructores
-    Heap() : m_vec(16) {}
+    Heap(size_t capacity = 16)
+        : m_data(new Node[capacity]), m_size(0), m_capacity(capacity) {}
 
     //copy constructor
-    Heap(const Heap& other) {
+        Heap(const Heap& other) : m_data(nullptr), m_size(0), m_capacity(0) {
         shared_lock<shared_mutex> lock(other.m_mtx);
-        m_vec = other.m_vec;
+        m_capacity = other.m_capacity;
+        m_size     = other.m_size;
+        m_data     = new Node[m_capacity];
+        for (size_t i = 0; i < m_size; ++i) m_data[i] = other.m_data[i];
     }
     //move constructor
-    Heap(Heap&& other) {
+    Heap(Heap&& other) : m_data(nullptr), m_size(0), m_capacity(0) {
         unique_lock<shared_mutex> lock(other.m_mtx);
-        m_vec = move(other.m_vec);
+        m_capacity = exchange(other.m_capacity, 0);
+        m_size     = exchange(other.m_size,     0);
+        m_data     = exchange(other.m_data,     nullptr);
     }
     //copy assignment
     Heap& operator=(const Heap& other) {
         if (this != &other) {
             unique_lock<shared_mutex> lock(m_mtx);
             shared_lock<shared_mutex> olock(other.m_mtx);
-            m_vec = other.m_vec;
+            delete[] m_data;
+            m_capacity = other.m_capacity;
+            m_size     = other.m_size;
+            m_data     = new Node[m_capacity];
+            for (size_t i = 0; i < m_size; ++i) m_data[i] = other.m_data[i];
         }
         return *this;
     }
@@ -114,61 +136,68 @@ public:
         if (this != &other) {
             unique_lock<shared_mutex> lock(m_mtx);
             unique_lock<shared_mutex> olock(other.m_mtx);
-            m_vec = move(other.m_vec);
+            delete[] m_data;
+            m_capacity = exchange(other.m_capacity, 0);
+            m_size     = exchange(other.m_size,     0);
+            m_data     = exchange(other.m_data,     nullptr);
         }
         return *this;
     }
-    virtual ~Heap() {}
+
+    virtual ~Heap() { delete[] m_data; }
 
     //insert
     void insert(value_type value, Ref ref) {
         unique_lock<shared_mutex> lock(m_mtx);
-        m_vec.push_back(Node(value, ref));
-        heapifyUp(m_vec.size() - 1);
+        if (m_size == m_capacity) resize();
+        m_data[m_size] = Node(value, ref);
+        heapifyUp(m_size);
+        ++m_size;
     }
 
     //extrac
     tuple<value_type, Ref> extract() {
         unique_lock<shared_mutex> lock(m_mtx);
-        if (m_vec.size() == 0) throw runtime_error("heap vacio");
-        auto result  = make_tuple(m_vec[0].m_data, m_vec[0].m_ref);
-        m_vec[0]     = m_vec[m_vec.size() - 1];
-        m_vec.pop_back();
-        if (m_vec.size() > 0) heapifyDown(0);
+        if (m_size == 0) throw runtime_error("heap vacio");
+        auto result  = make_tuple(m_data[0].m_data, m_data[0].m_ref);
+        m_data[0]    = m_data[m_size - 1];
+        --m_size;
+        if (m_size > 0) heapifyDown(0);
         return result;
     }
 
     //peek
     tuple<value_type, Ref> peek() const {
         shared_lock<shared_mutex> lock(m_mtx);
-        if (m_vec.size() == 0) throw runtime_error("heap vacio");
-        return make_tuple(m_vec[0].m_data, m_vec[0].m_ref);
+        if (m_size == 0) throw runtime_error("heap vacio");
+        return make_tuple(m_data[0].m_data, m_data[0].m_ref);
     }
 
-    bool   isEmpty() const { shared_lock<shared_mutex> lock(m_mtx); return m_vec.size() == 0; }
-    size_t size()    const { shared_lock<shared_mutex> lock(m_mtx); return m_vec.size(); }
+    bool   isEmpty() const { shared_lock<shared_mutex> lock(m_mtx); return m_size == 0; }
+    size_t size()    const { shared_lock<shared_mutex> lock(m_mtx); return m_size; }
 
     //forEach
     template<typename Func, typename... Args>
     void forEach(Func func, Args&&... args) {
         shared_lock<shared_mutex> lock(m_mtx);
-        m_vec.forEach(func, forward<Args>(args)...);
+        for (size_t i = 0; i < m_size; ++i)
+            func(m_data[i].m_data, forward<Args>(args)...);
     }
 
-    auto begin() { return m_vec.begin(); }
-    auto end()   { return m_vec.end();   }
-
+    Node* begin() { return m_data; }
+    Node* end()   { return m_data + m_size; }
+    
     //toString
     string toString() const {
         shared_lock<shared_mutex> lock(m_mtx);
         ostringstream oss;
         oss << "Array: [";
         bool first = true;
-        const_cast<Vector<Trait>&>(m_vec).forEachNode([&](Node& n) {
+        for (size_t i = 0; i < m_size; ++i) {
             if (!first) oss << ",";
-            oss << n;
+            oss << m_data[i];
             first = false;
-        });
+        }
         oss << "]\nTree:\n" << treeToString();
         return oss.str();
     }

@@ -14,7 +14,7 @@ void AVLDemo() {
     //caso 1: inser asc
     cout<<"\ncaso 1: insercion ascendente"<<endl;
     AscAVL t;
-    for (int i = 1; i <= 7; i++) {
+    for (auto i = 1; i <= 7; i++) {
         t.insert(i, i * 10);
         cout<<"  insert("<<i<<") | altura: "<<t.height()
             <<" | balance: "<<t.balance()<<endl;
@@ -24,7 +24,7 @@ void AVLDemo() {
     //caso 2: insercion descendente
     cout<<"\ncaso 2: insercion descendente"<<endl;
     AscAVL t2;
-    for (int i = 7; i >= 1; i--) {
+    for (auto i = 7; i >= 1; i--) {
         t2.insert(i, i * 10);
         cout<<"  insert("<<i<<") | altura: "<<t2.height()
             <<" | balance: "<<t2.balance()<<endl;
@@ -34,7 +34,7 @@ void AVLDemo() {
     //caso 3: insercion mixta
     cout<<"\ncaso 3: insercion mixta (LL, RR, LR, RL)"<<endl;
     AscAVL t3;
-    for (int v : {5, 3, 7, 1, 4, 6, 8, 2}) {
+    for (auto v : {5, 3, 7, 1, 4, 6, 8, 2}) {
         t3.insert(v, v * 10);
         cout<<"  insert("<<v<<") | altura: "<<t3.height()
             <<" | balance: "<<t3.balance()<<endl;
@@ -51,8 +51,8 @@ void AVLDemo() {
     //caso 5: concurrencia
     cout<<"\nCaso 5: concurrencia"<<endl;
     AscAVL tConc;
-    auto worker = [&tConc](int id) {
-        for (int i = 0; i < 200; i++) tConc.insert(i * id, id);
+    auto worker = [&tConc](auto id) {
+        for (auto i = 0; i < 200; i++) tConc.insert(i * id, id);
     };
     thread th1(worker,1), th2(worker,2), th3(worker,3),
            th4(worker,4), th5(worker,5);

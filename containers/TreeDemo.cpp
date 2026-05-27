@@ -98,8 +98,8 @@ void BinaryTreeDemo() {
     //t12 concurrencia 
     cout<<"\nConcurrencia"<<endl;
     AscTree tConc;
-    auto worker = [&tConc](int id) {
-        for (int i = 0; i < 200; i++) tConc.insert(i * id, id);
+    auto worker = [&tConc](auto id) {
+        for (auto i = 0; i < 200; i++) tConc.insert(i * id, id);
     };
     thread th1(worker,1), th2(worker,2), th3(worker,3),
            th4(worker,4), th5(worker,5);

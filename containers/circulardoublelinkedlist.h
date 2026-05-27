@@ -143,7 +143,7 @@ public:
     }
 
     template <typename Func, typename... Args>
-    void circularForEach(size_t vueltas, int direction, Func func, Args &&...args) {
+    void circularForEach(size_t vueltas, auto direction, Func func, Args &&...args) {
         unique_lock<shared_mutex> lock(this->m_mtx);
         if (!this->m_pRoot || vueltas == 0) return;
         Node  *act   = (direction >= 0) ? this->m_pRoot : this->m_tail;

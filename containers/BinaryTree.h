@@ -50,33 +50,6 @@ public:
     BTBackwardIterator& operator++() { --this->m_index; return *this; }
 };
 
-//t18 TraversalView
-template<typename ForwardIt, typename BackwardIt>
-class TraversalView {
-    ForwardIt  m_begin;
-    ForwardIt  m_end;
-    BackwardIt m_rbegin;
-    BackwardIt m_rend;
-public:
-    TraversalView(ForwardIt b, ForwardIt e, BackwardIt rb, BackwardIt re): m_begin(b), m_end(e), m_rbegin(rb), m_rend(re) {}
-    ForwardIt  begin()  const { return m_begin;  }
-    ForwardIt  end()    const { return m_end;    }
-    BackwardIt rbegin() const { return m_rbegin; }
-    BackwardIt rend()   const { return m_rend;   }
-
-    //t8 forEach
-    template<typename Func, typename... Args>
-    void forEach(Func func, Args&&... args) {
-        for (auto it = begin(); it != end(); ++it)
-            func(*it, forward<Args>(args)...);
-    }
-
-    template<typename Func, typename... Args>
-    void rForEach(Func func, Args&&... args) {
-        for (auto it = rbegin(); it != rend(); ++it)
-            func(*it, forward<Args>(args)...);
-    }
-};
 
 //binary Tree
 template<typename Trait>

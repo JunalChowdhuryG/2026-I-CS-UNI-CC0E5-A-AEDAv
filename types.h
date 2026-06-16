@@ -1,6 +1,6 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
-
+#include <cstddef>
 // C/C++
 // typedef int Type;
 
@@ -14,4 +14,5 @@ using T1 = int;
 
 using Ref = long;
 using Token = char;
+using DiffType = ptrdiff_t;
 #endif // __TYPES_H__

@@ -2,7 +2,7 @@
 #define __AVL_H__
 
 #include "binarytree.h"
-
+#include "../types.h"
 template<typename T>
 struct AVLNode : BinaryTreeNode<T, AVLNode<T>> {
     size_t m_height;
@@ -19,7 +19,7 @@ public:
 protected:
     size_t   ht(Node* n)         const { return n ? n->m_height : 0; }
     void     upd(Node* n)              { if(n) n->m_height = 1 + max(ht(n->child(0)), ht(n->child(1))); }
-    ptrdiff_t bf(Node* n)        const { return n ? (ptrdiff_t)ht(n->child(0)) - (ptrdiff_t)ht(n->child(1)) : 0; }
+    DiffType bf(Node* n)        const { return n ? (DiffType)ht(n->child(0)) - (DiffType)ht(n->child(1)) : 0; }
 
     //rotacion side=0 izquierdo - side=1 derecho  
     void rotate(Node* &n, size_t side) {
@@ -37,7 +37,7 @@ protected:
         upd(n);
         auto b = bf(n);
         for (size_t side = 0; side < 2; ++side) {
-            ptrdiff_t peso = (side == 0) ? 1 : -1;
+            DiffType peso = (side == 0) ? 1 : -1;
             if (b * peso > 1) {
                 if (bf(n->child(side)) * peso < 0)
                     rotate(n->child(side), 1 - side);
@@ -78,7 +78,7 @@ public:
     virtual ~AVL() {}
 
     size_t    height()  const { shared_lock<shared_mutex> lock(this->m_mtx); return ht(this->m_pRoot); }
-    ptrdiff_t balance() const { shared_lock<shared_mutex> lock(this->m_mtx); return bf(this->m_pRoot); }
+    DiffType balance() const { shared_lock<shared_mutex> lock(this->m_mtx); return bf(this->m_pRoot); }
 };
 
 #endif // __AVL_H__

@@ -31,10 +31,10 @@ template<typename Node, typename value_type>
 class BTIteratorBase {
 protected:
     Stack<Node*> m_nodes;
-    ptrdiff_t    m_index;
+    DiffType    m_index;
 public:
     BTIteratorBase() : m_index(0) {}
-    BTIteratorBase(Stack<Node*> s, ptrdiff_t idx) : m_nodes(s), m_index(idx) {}
+    BTIteratorBase(Stack<Node*> s, DiffType idx) : m_nodes(s), m_index(idx) {}
     value_type& operator*()  const { return m_nodes[m_index]->m_data; }
     Node*       getNode()    const { return m_nodes[m_index]; }
     bool operator==(const BTIteratorBase& o) const { return m_index == o.m_index; }
@@ -136,8 +136,8 @@ protected:
     }
 
     TraversalView<ForwardIt,BackwardIt> make_view(Stack<Node*> s) const {
-        ptrdiff_t last = (ptrdiff_t)s.size()-1;
-        return { ForwardIt(s,0), ForwardIt(s,(ptrdiff_t)s.size()),
+        DiffType last = (DiffType)s.size()-1;
+        return { ForwardIt(s,0), ForwardIt(s,(DiffType)s.size()),
                  BackwardIt(s,last), BackwardIt(s,-1) };
     }
     string traversalToString(Stack<Node*>& s) const {

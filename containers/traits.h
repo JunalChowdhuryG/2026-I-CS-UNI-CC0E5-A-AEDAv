@@ -10,10 +10,15 @@ struct BaseTrait{
 };
 
 template <typename _Node>
-struct AscendingTrait : public BaseTrait<_Node, less<typename _Node::value_type>>{
-};
-template <typename _Node>
-struct DescendingTrait : public BaseTrait<_Node, greater<typename _Node::value_type>>{
-};
+struct AscendingTrait  : BaseTrait<_Node, less<typename _Node::value_type>>{};
 
-#endif // __TRAITS_H__
+template <typename _Node>
+struct DescendingTrait : BaseTrait<_Node, greater<typename _Node::value_type>>{};
+
+template <typename _Key, typename _Value, typename _Comp = less<_Key>>
+struct KVTrait {
+    using Key        = _Key;
+    using Value      = _Value;
+    using Comp       = _Comp;
+};
+#endif

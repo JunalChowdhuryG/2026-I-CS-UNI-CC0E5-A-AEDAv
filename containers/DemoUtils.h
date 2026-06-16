@@ -48,7 +48,6 @@ void testIO(const Container& c) {
 }
 
 //concurrencia
-//N hillos ejecutando y verifica tamaño final sea esperado
 template<typename Container, typename WorkerFn>
 void testConcurrency(Container& c, WorkerFn workerFn,
                      size_t nThreads, size_t expectedSize,

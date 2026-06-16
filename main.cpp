@@ -7,7 +7,7 @@ int main(){
     // DemoVector();
     //DemoConcurrentVector();
     //ListsDemo();
-    HeapDemo();
+    //HeapDemo();
     DemoHashTable();
     return 0;
 }

@@ -182,8 +182,7 @@ public:
 
     BinaryTree(BinaryTree&& other) : m_pRoot(nullptr) {
         unique_lock<shared_mutex> lock(other.m_mtx);
-        m_pRoot       = other.m_pRoot;
-        other.m_pRoot = nullptr;
+        m_pRoot = exchange(other.m_pRoot, nullptr);
     }
 
     BinaryTree& operator=(const BinaryTree& other) {

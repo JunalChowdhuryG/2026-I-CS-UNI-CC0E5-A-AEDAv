@@ -3,111 +3,87 @@
 
 #include "binarytree.h"
 
-//AVLNode
 template<typename T>
 struct AVLNode : BinaryTreeNode<T, AVLNode<T>> {
     size_t m_height;
-    AVLNode(T data, Ref ref): BinaryTreeNode<T, AVLNode<T>>(data, ref), m_height(1) {}
+    AVLNode(T data, Ref ref) : BinaryTreeNode<T,AVLNode<T>>(data,ref), m_height(1) {}
 };
+
 template<typename Trait>
 class AVL : public BinaryTree<Trait> {
 public:
     using value_type = typename Trait::value_type;
     using Node       = typename Trait::Node;
-private:
-    //altura nodo
-    size_t  height(Node* n) const {
-        if (!n) return 0;
-        return n->m_height;
-    }
-    //update altura
-    void update_height(Node* n) {
-        if (!n) return;
-        n->m_height = 1 + max(height(n->m_pChild[0]), height(n->m_pChild[1]));
-    }
-    //factorr balance
-    size_t  balance_factor(Node* n) const {
-        if (!n) return 0;
-        return height(n->m_pChild[0]) - height(n->m_pChild[1]);
-    }
-    //rotar derecha
-    void rotate_right(Node* &y) {
-        Node* x   = y->m_pChild[0];
-        Node* B   = x->m_pChild[1];
-        x->m_pChild[1] = y;
-        y->m_pChild[0] = B;
-        update_height(y);
-        update_height(x);
-        y = x;
-    }
-    //rotar izquierda
-    void rotate_left(Node* &x) {
-        Node* y   = x->m_pChild[1];
-        Node* B   = y->m_pChild[0];
-        y->m_pChild[0] = x;
-        x->m_pChild[1] = B;
-        update_height(x);
-        update_height(y);
-        x = y;
-    }
-    //rebalanceeo
-    void rebalance(Node* &n) {
-        update_height(n);
-        size_t  bf = balance_factor(n);
-        //desbalance izq-izq
-        if (bf > 1 && balance_factor(n->m_pChild[0]) >= 0) rotate_right(n);
-        //desbalance izq-der
-        else if (bf > 1 && balance_factor(n->m_pChild[0])<0) {rotate_left(n->m_pChild[0]);rotate_right(n);}
-        //desbalance der-der
-        else if (bf < -1 && balance_factor(n->m_pChild[1]) <= 0) rotate_left(n);
-        //desbalance der-izq
-        else if (bf < -1 && balance_factor(n->m_pChild[1]) > 0) {rotate_right(n->m_pChild[1]);rotate_left(n);}
-    }
+
 protected:
-    //inserta recur rebalanceo post-order
+    //altura/balance
+    size_t ht(Node* n)         const { return n ? n->m_height : 0; }
+    void   upd(Node* n)              { if(n) n->m_height = 1 + max(ht(cast(n,0)), ht(cast(n,1))); }
+    auto    bf(Node* n)         const { return n ? (int)ht(cast(n,0)) - (int)ht(cast(n,1)) : 0; }
+    Node*  cast(Node* n, size_t d)  const { return static_cast<Node*>(n->m_pChild[d]); }
+    Node*& castRef(Node* n, size_t d)   { return reinterpret_cast<Node*&>(n->m_pChild[d]); }
+
+    //rotación unificada
+    void rotate(Node* &n, size_t side) {
+        auto  opp  = 1 - side;
+        Node* hijo = cast(n, side);       
+        Node* sub  = cast(hijo, opp);     
+        hijo->m_pChild[opp] = n;      
+        n->m_pChild[side]   = sub; 
+        upd(n); upd(hijo);
+        n = hijo;
+    }
+
+    //rebalanceo
+    void rebalance(Node* &n) {
+        upd(n);
+        auto b = bf(n);
+        for (size_t side = 0; side < 2; ++side) {
+            auto peso = (side == 0) ? 1 : -1;   
+            auto opp  = 1 - side;
+            if (b * peso > 1) {
+                if (bf(cast(n, side)) * peso < 0)
+                    rotate(castRef(n, side), opp); 
+                rotate(n, side);
+                return;
+            }
+        }
+    }
+
+    //insert rebalanceo
     void internal_insert(Node* &pNode, const value_type &data, Ref ref) override {
-        if (!pNode) { pNode = new AVLNode<value_type>(data, ref); return; }
+        if (!pNode) { pNode = new Node(data, ref); return; }
         auto branch = !this->m_comp(data, pNode->m_data);
-        internal_insert(pNode->m_pChild[branch], data, ref);
+        internal_insert(reinterpret_cast<Node*&>(pNode->m_pChild[branch]), data, ref);
         rebalance(pNode);
     }
-    //internal copy
+
+    //copia conserv m_height
     Node* internal_copy(Node* pNode) override {
         if (!pNode) return nullptr;
-        auto* newNode        = new AVLNode<value_type>(pNode->m_data, pNode->m_ref);
-        newNode->m_height    = pNode->m_height;
-        newNode->m_pChild[0] = internal_copy(pNode->m_pChild[0]);
-        newNode->m_pChild[1] = internal_copy(pNode->m_pChild[1]);
-        return newNode;
+        auto* n        = new Node(pNode->m_data, pNode->m_ref);
+        n->m_height    = pNode->m_height;
+        n->m_pChild[0] = internal_copy(cast(pNode, 0));
+        n->m_pChild[1] = internal_copy(cast(pNode, 1));
+        return n;
     }
+
 public:
     AVL() : BinaryTree<Trait>() {}
-    //copy constructor
     AVL(const AVL& other) : BinaryTree<Trait>() {
         shared_lock<shared_mutex> lock(other.m_mtx);
         this->m_pRoot = internal_copy(other.m_pRoot);
     }
     AVL(AVL&& other) : BinaryTree<Trait>(std::move(other)) {}
     AVL& operator=(const AVL& other) {
-        if (this != &other) {
-            this->clear();
-            shared_lock<shared_mutex> lock(other.m_mtx);
-            this->m_pRoot = internal_copy(other.m_pRoot);
-        }
+        if (this != &other) { this->clear(); shared_lock<shared_mutex> lock(other.m_mtx); this->m_pRoot = internal_copy(other.m_pRoot); }
         return *this;
     }
     AVL& operator=(AVL&& other) { BinaryTree<Trait>::operator=(std::move(other)); return *this; }
     virtual ~AVL() {}
-    //altura arbol
-    size_t height() const {
-        shared_lock<shared_mutex> lock(this->m_mtx);
-        return height(this->m_pRoot);
-    }
-    //factor balance arbol
-    size_t balance() const {
-        shared_lock<shared_mutex> lock(this->m_mtx);
-        return balance_factor(this->m_pRoot);
-    }
+
+    size_t height()  const { shared_lock<shared_mutex> lock(this->m_mtx); return ht(this->m_pRoot); }
+    int    balance() const { shared_lock<shared_mutex> lock(this->m_mtx); return bf(this->m_pRoot); }
 };
 
-#endif // __AVL_H__
+#endif

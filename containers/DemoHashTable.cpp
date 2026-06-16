@@ -1,37 +1,58 @@
 #include <iostream>
-#include <string>
-#include <fstream>
+#include <sstream>
 #include "../types.h"
 #include "hashtable.h"
-
+#include "DemoUtils.h"
 using namespace std;
 
 void DemoHashTable() {
-    cout<<"PRUEBAS HASHTABLE"<<endl;
-    
-    HashTable<long, string> m(3); 
-    //operator[]
+    printHeader("HASHTABLE");
+
+    //m[key]=valor
+    printSection("operator[]");
+    HashTable<int, string> m;
     m[10] = "Diez";
     m[25] = "Veinticinco";
-    m[10] = "Diez Modificado"; 
     m[3]  = "Tres";
+    m[10] = "Diez Modificado";   //actualiza no duplicar
+    cout<<"m[10] = "<<m[10]<<"\n";
+    cout<<"m[25] = "<<m[25]<<"\n";
+    cout<<"m[3]  = "<<m[3] <<"\n";
+    cout<<"size  = "<<m.size()<<" (esperado 3, no 4)\n";
 
-    cout<<"m[10] = "<<m[10]<<endl;
+    //for(const auto& [key, value] :m) 
+    printSection("for(const auto& [key, value] :m)");
+    for (const auto& [key, value] : m)
+        cout<<"key="<<key<<" value="<<value<<"\n";
 
-    //for (const auto& [key, value] : m)
-    cout<<"\nfor-range:"<<endl;
-    for (const auto& [key, value] : m) {
-        cout<<"  Key: "<<key<<" -> Value: "<<value<<endl;
-    }
+    //operator<<
+    printSection("operator<<");
+    cout<<""<<m<<"\n";
 
-    //operator<< y toString
-    cout<<"\noperator<< (toString):"<<endl;
-    cout<<m<<endl;
+    //operator>>
+    printSection("operator>>");
+    ostringstream oss;
+    oss<<m;
+    HashTable<int, string> m2;
+    istringstream iss(oss.str());
+    iss >> m2;
+    cout<<"serializado  : "<<oss.str()<<"\n";
+    cout<<"deserializado: "<<m2<<"\n";
+    cout<<"sizes iguales: "<<(m.size() == m2.size() ? "SI" : "NO")<<"\n";
 
-    //copia y movimiento
-    HashTable<long, string> copia(m);
-    copia[99] = "Dato de Copia";
-    cout<<"\nTamano Original: "<<m.size()<<" | Tamano Copia: "<<copia.size()<<endl;
+    //copy constructor
+    printSection("Copy constructor");
+    HashTable<int, string> copia(m);
+    copia[99] = "NuevoEnCopia";
+    cout<<"original (sin 99) : size="<<m.size()   <<""<<m   <<"\n";
+    cout<<"copia    (con 99) : size="<<copia.size()<< ""<<copia<<"\n";
+    cout<<"independientes    : "<<(!m.contains(99) ? "SI" : "NO")<<"\n";
 
-    cout<<"\nFIN PRUEBAS HASHTABLE"<<endl;
+    //move constructor
+    printSection("Move constructor");
+    HashTable<int, string> movida(std::move(copia));
+    cout<<"movida           : size="<<movida.size()<<""<<movida<<"\n";
+    cout<<"fuente tras move : size="<<copia.size() <<" (esperado 0)\n";
+
+    printFooter("HASHTABLE");
 }

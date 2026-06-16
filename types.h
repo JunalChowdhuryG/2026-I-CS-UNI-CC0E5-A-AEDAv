@@ -13,5 +13,5 @@ using Type = int;
 using T1 = int;
 
 using Ref = long;
-
+using Token = char;
 #endif // __TYPES_H__

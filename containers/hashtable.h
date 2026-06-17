@@ -24,17 +24,6 @@ struct KVPair {
     friend istream& operator>>(istream& is, KVPair& p)       { Token c; return is >> p.m_key >> c >> p.m_value; }
 };
 
-//for (const auto& [k, v] : table)
-namespace std {
-    template<typename K,typename V,typename C> struct tuple_size<KVPair<K,V,C>>      : integral_constant<size_t,2>{};
-    template<typename K,typename V,typename C> struct tuple_element<0,KVPair<K,V,C>> { using type = const K; };
-    template<typename K,typename V,typename C> struct tuple_element<1,KVPair<K,V,C>> { using type = V; };
-}
-template<size_t I,typename K,typename V,typename C> decltype(auto) get(KVPair<K,V,C>& p)
-    { if constexpr(I==0) return (const K&)p.m_key; else return p.m_value; }
-template<size_t I,typename K,typename V,typename C> decltype(auto) get(const KVPair<K,V,C>& p)
-    { if constexpr(I==0) return (const K&)p.m_key; else return (const V&)p.m_value; }
-
 //HashTable
 template <typename Trait>
 class HashTable {

@@ -1,6 +1,8 @@
 #ifndef __TYPES_H__
 #define __TYPES_H__
 
+#include <cstddef>
+
 // C/C++
 // typedef int Type;
 
@@ -10,8 +12,14 @@ using Type = int;
 // T1 must be int for 32-bit architecture and long long for 64-bit architecture
 // It must work for windows, linux, iOS, macOS, android, etc.
 
-using T1 = int;
+using T1    = int;
+using Ref   = long;        
+using Token = char;   
 
-using Ref = long;
+using Size  = std::size_t; 
+using Level = std::size_t; 
+using Flag  = bool;      
+
+using TypeBTree = char;
 
 #endif // __TYPES_H__

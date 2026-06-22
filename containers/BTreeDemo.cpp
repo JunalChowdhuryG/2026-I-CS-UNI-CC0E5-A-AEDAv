@@ -1,113 +1,102 @@
-//#include <iostream.h>
-#include <time.h>
-#include <stdlib.h>
-#include <string>
-#include "BTree.h"
+#include <iostream>
+#include <sstream>
+#include <thread>
+#include <vector>
+#include "../types.h"
+#include "btree.h"
+#include "traits.h"
+#include "DemoUtils.h"
+using namespace std;
 
-//const char * keys="CDAMPIWNBKEHOLJYQZFXVRTSGU";
-const char * keys1 = "D1XJ2xTg8zKL9AhijOPQcEowRSp0NbW567BUfCqrs4FdtYZakHIuvGV3eMylmn";
-const char * keys2 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-const char * keys3 = "DYZakHIUwxVJ203ejOP9Qc8AdtuEop1XvTRghSNbW567BfiCqrs4FGMyzKLlmn";
+using Trait = Tree34Trait<TypeBTree>;
+using BT    = BTree<Trait>;
 
-const int BTreeSize = 3;
-void main(int argc, char * argv[], char * envp[])
-{
-       int result, i;
-       BTree <char> bt (BTreeSize);
-       for (i = 0; keys1[i]; i++)
-       {
-               //cout<<"Inserting "<<keys1[i]<<endl;
-               result = bt.Insert(keys1[i], i*i);
-               //bt.Print(cout);
-       }
-       bt.Print(cout);
-       /*for (i = 0; keys2[i]; i++)
-       {
-               cout << "Searching " << keys2[i] << " ";
-               long ObjID = bt.Search(keys2[i]);
-               if( ObjID != -1 )
-                       cout << "Achei " << keys2[i] << " ID = " << ObjID << endl;
-               else
-                       cout <<"Nao achei!" << keys2[i] << endl;
-       }*/
-       /*cout.flush();
-
-       for (i = 0; keys3[i]; i++)
-       {
-               cout << "Removing " << keys3[i] << " ";
-               if( bt.Remove(keys3[i], -1) )
-                       cout << keys3[i] << " removido !" << endl;
-               else
-                       cout <<"Nao achei!" << keys3[i] << endl;
-               bt.Print(cout);
-       }
-       bt.Print(cout);
-       cout.flush();*/
-       return 1;
+//concurrencia
+static void concurrencyWorker(BT& tree, Ref workerId) {
+    for (Size i = 0; i < 200; ++i)
+        tree.insert(static_cast<TypeBTree>('a' + ((workerId * 7 + i) % 26)), workerId);
 }
 
+void DemoBTree() {
+    printHeader("BTREE");
 
+    //insert
+    printSection("insert");
+    BT bt;
+    const string keys = "D1XJ2xTg8zKL9AhijOPQcEowRSp0NbW567BUfCqrs4FdtYZakHIuvGV3eMylmn";
+    for (Size i = 0; i < keys.size(); ++i)
+        bt.insert(keys[i], static_cast<Ref>(i * i));
+    cout << "  size=" << bt.size() << "  height=" << bt.height() << "  order=" << bt.order() << "\n";
 
+    //search
+    printSection("search");
+    try {
+        auto [val, ref] = bt.search('Z');
+        cout << "  search('Z') -> encontrado  valor=" << val << "  ref=" << ref << "\n";
+    } catch (const runtime_error& e) {
+        cout << "  search('Z') -> " << e.what() << "\n";
+    }
+    try {
+        bt.search('!');
+    } catch (const runtime_error& e) {
+        cout << "  search('!') -> " << e.what() << "\n";
+    }
 
+    //ForEach variadic
+    printSection("forEach (variadic, sin Print helper)");
+    Size letterCount = 0;
+    bt.forEach([](BT::Entry& e, Level, Size& count) {
+        if (isalpha(static_cast<unsigned char>(e.m_data))) ++count;
+    }, letterCount);
+    cout << "  letras en el arbol: " << letterCount << "\n";
 
+    //FirstThat variadic
+    printSection("firstThat (variadic)");
+    auto* entry = bt.firstThat([](BT::Entry& e, Level, TypeBTree target) {
+        return e.m_data == target;
+    }, TypeBTree('M'));
+    cout << "  firstThat('M') -> " << (entry ? "encontrado" : "no encontrado");
+    if (entry) cout << " ref=" << entry->m_ref;
+    cout << "\n";
 
+    //remove
+    printSection("remove");
+    Size beforeRemove = bt.size();
+    auto [removedVal, removedRef] = bt.remove('A');
+    cout << "  remove('A') -> eliminado: valor=" << removedVal << " ref=" << removedRef
+         << "  size antes=" << beforeRemove << "  size despues=" << bt.size() << "\n";
 
+    //iterador begin/end, for-range
+    printSection("for (auto& entry : bt) — iterador inorder");
+    string inorderKeys;
+    for (auto& entry : bt) inorderKeys += entry.m_data;
+    cout << "  claves en orden: " << inorderKeys << "\n";
 
+    //useCount()
+    printSection("useCount() — contador de accesos por clave");
+    bt.search('B'); bt.search('B'); bt.search('B');
+    bt.search('C');                              
+    for (auto& entry : bt)
+        if (entry.m_data == 'B' || entry.m_data == 'C')
+            cout << "  '" << entry.m_data << "' useCount=" << entry.useCount() << "\n";
 
-/*const char * keys="CDAMPIWNBKEHOLJYQZFXVRTSGU";
-const char * keys2="CDAMPIWNBKEHOLJYQZFXVRTSGU";
-const int BTreeSize = 3;
-main (int argc, char * argv)
-{
-       //__int64 li;
-       BTree <__int64> bt (BTreeSize);
-       for (register int i = 0; i < 1000000; i++)
-       {
-               //cout<<"Inserting "<<keys[i]<<endl;
-               bt.Insert(i, i-1);
-               //bt.Print(cout);
-       }
+    //operator<< operator>>
+    testIO(bt);
 
-       for (i = 0; i < 1000; i++)
-       {
-               __int64 key = 975000+(::rand()%50000);
-               //cout << "Searching " << (long)key << " ";
-               long ObjID = bt.Search(key);
-               if( ObjID != -1 )
-                       cout << "Achei " << (long)key << " ID = " << ObjID << endl;
-               else
-                       cout <<"  Nao achei!" << (long)key << endl;
-       }
-       cout.flush();
+    //copy / move constructor ──────────────────────────────────────────
+    testCopyMove(bt, [](BT& c) { c.insert('!', 999); });
 
-       return 1;
-}*/
+    //concurrencia
+    printSection("Concurrencia");
+    BT concurrentTree;
+    const Size kThreads = 5, kInsertsPerThread = 200;
+    vector<thread> threads;
+    threads.reserve(kThreads);
+    for (Size i = 0; i < kThreads; ++i)
+        threads.emplace_back(concurrencyWorker, std::ref(concurrentTree), static_cast<Ref>(i + 1));
+    for (auto& t : threads) t.join();
+    cout << "  inserciones concurrentes lanzadas: " << (kThreads * kInsertsPerThread) << "\n";
+    cout << "  size final (sin corrupcion, <= 26 claves unicas): " << concurrentTree.size() << "\n";
 
-
-
-/*const int BTreeSize = 3;
-main (int argc, char * argv)
-{
-       int result, i;
-       BTree <LONGLONG> bt(BTreeSize);
-       result = bt.Create ("ernesto3-string-btree-start.dat",ios::in|ios::out);
-       if (!result) { cout<<"Please delete testbt.dat"<<endl;return 0; }
-       srand( (unsigned)time( NULL ) );
-       LARGE_INTEGER key;
-       for (i = 0; i < 1000000; i++)
-       {
-               //cout<<"Inserting "<<keys[i]<<endl;
-               char strTmp[50];
-               key.LowPart = rand();
-               key.HighPart = rand();
-               std::string str(strTmp);
-               result = bt.Insert(key.QuadPart, i);
-               //bt.Print(cout);
-               if( i % 100000 == 0 )
-               {       cout << i << endl; cout.flush();        }
-       }
-       //cout << "Searching D " << bt.Search();
-       //bt.Search(1,1);
-       cout.flush();
-       return 1;
-}*/
+    printFooter("BTREE");
+}

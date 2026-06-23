@@ -148,7 +148,7 @@ public:
         value_type outValue{}; Ref outRef{};
         auto error = m_pRoot->remove(key, outValue, outRef);
         if (error == bt_ErrorCode::notFound)
-            throw std::runtime_error("BTree::remove — clave no encontrada");
+            throw std::runtime_error("BTree::remove - clave no encontrada");
         --m_numKeys;
         if (error == bt_ErrorCode::rootMerged) --m_height;
         return {outValue, outRef};
@@ -159,7 +159,7 @@ public:
         std::shared_lock<std::shared_mutex> lock(m_mtx);
         value_type outValue{}; Ref outRef{};
         if (!m_pRoot->search(key, outValue, outRef))
-            throw std::runtime_error("BTree::search — clave no encontrada");
+            throw std::runtime_error("BTree::search - clave no encontrada");
         return {outValue, outRef};
     }
 
@@ -167,28 +167,28 @@ public:
     Level height() const { std::shared_lock<std::shared_mutex> lock(m_mtx); return m_height; }
     Size  order()  const { return Order; }
 
-    // ForEach (Con Perfect Forwarding)
+    // ForEach
     template <typename Func, typename... Args>
     void forEach(Func func, Args&&... args) {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
         m_pRoot->forEach(0, func, std::forward<Args>(args)...);
     }
 
-    // FirstThat (Con Perfect Forwarding)
+    // FirstThat
     template <typename Func, typename... Args>
     Entry* firstThat(Func func, Args&&... args) {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
         return m_pRoot->firstThat(0, func, std::forward<Args>(args)...);
     }
 
-    // forEachPage (Con Perfect Forwarding)
+    // forEachPage
     template <typename Func, typename... Args>
     void forEachPage(Func func, Args&&... args) {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
         m_pRoot->forEachPage(0, func, std::forward<Args>(args)...);
     }
     
-    // toString unificado (reutilizando el iterador y eliminando variables booleanas nativas)
+    // toString unificado
     std::string toString() const {
         std::ostringstream oss;
         oss << "[";
@@ -202,7 +202,7 @@ public:
         return oss.str();
     }
 
-    // operator<< rediseñado, delegando a toString y eliminando const_cast
+    // operator<<
     friend std::ostream& operator<<(std::ostream& os, const BTree& t) {
         return os << t.toString();
     }

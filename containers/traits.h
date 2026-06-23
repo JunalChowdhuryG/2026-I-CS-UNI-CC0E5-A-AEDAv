@@ -15,5 +15,10 @@ struct AscendingTrait : public BaseTrait<_Node, less<typename _Node::value_type>
 template <typename _Node>
 struct DescendingTrait : public BaseTrait<_Node, greater<typename _Node::value_type>>{
 };
+template <typename _Key, typename _ObjID = long>
+struct BTreeTrait {
+    using keyType = _Key;
+    using ObjIDType = _ObjID;
+};
 
 #endif // __TRAITS_H__

@@ -15,6 +15,8 @@ using Type = int;
 using T1    = int;
 using Ref   = long;        
 using Token = char;   
+using SIndex = long;
+using Byte  = unsigned char;
 
 using Size  = std::size_t; 
 using Level = std::size_t; 

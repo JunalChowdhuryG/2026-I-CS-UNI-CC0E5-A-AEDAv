@@ -2,6 +2,7 @@
 #define __BTREEPAGE_H__
 
 #include <vector>
+#include <utility>
 #include "../types.h"
 #include "traits.h"
 
@@ -71,12 +72,12 @@ private:
     }
 
     template <typename Container, typename Item>
-    static void insertAt(Container& c, const Item& item, Size pos) {
-        Size n = c.size();
-        for (Size i = n - 2; i >= pos && i != static_cast<Size>(-1); --i)
-            c[i + 1] = c[i];
-        c[pos] = item;
-    }
+        static void insertAt(Container& c, const Item& item, Size pos) {
+            SIndex n = c.size();
+            for (SIndex i = n - 2; i >= (SIndex)pos; --i)
+                c[i + 1] = c[i];
+            c[pos] = item;
+        }
     template <typename Container>
     static void removeAt(Container& c, Size pos) {
         Size n = c.size();
@@ -184,7 +185,8 @@ private:
                      Page*& c1, Page*& c2, Page*& c3, Entry& e1, Entry& e2) {
         if (!c1) c1 = new Page(m_maxKeysForChilds, m_unique);
         c1->clearKeys();
-        Size nKeys = (tmpKeys.size() - 2) / 3, i = 0;
+        Size nKeys = (tmpKeys.size() - 2) / 3;
+        Size i = 0;
         for (; i < nKeys; ++i) { c1->m_keys[i] = tmpKeys[i]; c1->m_subPages[i] = tmpSub[i]; ++c1->m_keyCount; }
         c1->m_subPages[i] = tmpSub[i];
         e1 = tmpKeys[i++];
@@ -319,9 +321,8 @@ public:
             }
             Entry& rightFirst = m_subPages[pos + 1]->firstEntry();
             std::swap(m_keys[pos], rightFirst);
-            value_type discard; Ref discardRef;   // el swap movió la clave real
-                                                   // más abajo; ya capturamos
-                                                   // outValue/outRef arriba.
+            value_type discard{}; Ref discardRef{};  
+            
             error = m_subPages[++pos]->remove(key, discard, discardRef);
         } else if (pos == m_keyCount) {
             error = m_subPages[pos]->remove(key, outValue, outRef);
@@ -354,36 +355,36 @@ public:
         return false;
     }
 
-    //ForEach variadic
+    // ForEach variadic con Perfect Forwarding
     template <typename Func, typename... Args>
     void forEach(Level level, Func func, Args&&... args) {
         for (Size i = 0; i < m_keyCount; ++i) {
-            if (m_subPages[i]) m_subPages[i]->forEach(level + 1, func, args...);
-            func(m_keys[i], level, args...);
+            if (m_subPages[i]) m_subPages[i]->forEach(level + 1, func, std::forward<Args>(args)...);
+            func(m_keys[i], level, std::forward<Args>(args)...);
         }
-        if (m_subPages[m_keyCount]) m_subPages[m_keyCount]->forEach(level + 1, func, args...);
+        if (m_subPages[m_keyCount]) m_subPages[m_keyCount]->forEach(level + 1, func, std::forward<Args>(args)...);
     }
 
-    //FirstThat variadic
+    // FirstThat variadic con Perfect Forwarding
     template <typename Func, typename... Args>
     Entry* firstThat(Level level, Func func, Args&&... args) {
         for (Size i = 0; i < m_keyCount; ++i) {
             if (m_subPages[i])
-                if (Entry* found = m_subPages[i]->firstThat(level + 1, func, args...))
+                if (Entry* found = m_subPages[i]->firstThat(level + 1, func, std::forward<Args>(args)...))
                     return found;
-            if (func(m_keys[i], level, args...)) return &m_keys[i];
+            if (func(m_keys[i], level, std::forward<Args>(args)...)) return &m_keys[i];
         }
         if (m_subPages[m_keyCount])
-            return m_subPages[m_keyCount]->firstThat(level + 1, func, args...);
+            return m_subPages[m_keyCount]->firstThat(level + 1, func, std::forward<Args>(args)...);
         return nullptr;
     }
 
-    //forEachPage variadic
+    // forEachPage variadic con Perfect Forwarding
     template <typename Func, typename... Args>
     void forEachPage(Level level, Func func, Args&&... args) {
-        func(m_keyCount, level, args...);
+        func(m_keyCount, level, std::forward<Args>(args)...);
         for (Size i = 0; i <= m_keyCount; ++i)
-            if (m_subPages[i]) m_subPages[i]->forEachPage(level + 1, func, args...);
+            if (m_subPages[i]) m_subPages[i]->forEachPage(level + 1, func, std::forward<Args>(args)...);
     }
 };
 

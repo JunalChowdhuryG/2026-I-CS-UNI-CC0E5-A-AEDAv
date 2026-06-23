@@ -24,6 +24,7 @@ public:
     using Page  = BTreePage<Trait>;
     using Entry = typename Page::Entry;
     using Node  = Page;                 
+    
     //iterator
     class Iterator {
         std::vector<std::pair<Page*, Size>> m_stack;
@@ -60,8 +61,12 @@ public:
         Flag operator!=(const Iterator& o) const { return !(*this == o); }
     };
 
+    // Iteradores normales y constantes
     Iterator begin() { std::shared_lock<std::shared_mutex> lock(m_mtx); return Iterator(m_pRoot); }
     Iterator end()   { return Iterator(); }
+    
+    Iterator begin() const { std::shared_lock<std::shared_mutex> lock(m_mtx); return Iterator(m_pRoot); }
+    Iterator end() const   { return Iterator(); }
 
 private:
     Page                *m_pRoot;
@@ -126,6 +131,7 @@ public:
     }
     //destructor
     ~BTree() { delete m_pRoot; }   
+    
     //insert
     Flag insert(const value_type& key, Ref ref) {
         std::unique_lock<std::shared_mutex> lock(m_mtx);
@@ -139,7 +145,7 @@ public:
     //remove
     std::tuple<value_type, Ref> remove(const value_type& key) {
         std::unique_lock<std::shared_mutex> lock(m_mtx);
-        value_type outValue; Ref outRef{};
+        value_type outValue{}; Ref outRef{};
         auto error = m_pRoot->remove(key, outValue, outRef);
         if (error == bt_ErrorCode::notFound)
             throw std::runtime_error("BTree::remove — clave no encontrada");
@@ -151,7 +157,7 @@ public:
     //search
     std::tuple<value_type, Ref> search(const value_type& key) const {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
-        value_type outValue; Ref outRef{};
+        value_type outValue{}; Ref outRef{};
         if (!m_pRoot->search(key, outValue, outRef))
             throw std::runtime_error("BTree::search — clave no encontrada");
         return {outValue, outRef};
@@ -161,38 +167,44 @@ public:
     Level height() const { std::shared_lock<std::shared_mutex> lock(m_mtx); return m_height; }
     Size  order()  const { return Order; }
 
-    //ForEach
+    // ForEach (Con Perfect Forwarding)
     template <typename Func, typename... Args>
     void forEach(Func func, Args&&... args) {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
-        m_pRoot->forEach(0, func, args...);
+        m_pRoot->forEach(0, func, std::forward<Args>(args)...);
     }
 
-    //FirstThat
+    // FirstThat (Con Perfect Forwarding)
     template <typename Func, typename... Args>
     Entry* firstThat(Func func, Args&&... args) {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
-        return m_pRoot->firstThat(0, func, args...);
+        return m_pRoot->firstThat(0, func, std::forward<Args>(args)...);
     }
 
-    //forEachPage
+    // forEachPage (Con Perfect Forwarding)
     template <typename Func, typename... Args>
     void forEachPage(Func func, Args&&... args) {
         std::shared_lock<std::shared_mutex> lock(m_mtx);
-        m_pRoot->forEachPage(0, func, args...);
+        m_pRoot->forEachPage(0, func, std::forward<Args>(args)...);
+    }
+    
+    // toString unificado (reutilizando el iterador y eliminando variables booleanas nativas)
+    std::string toString() const {
+        std::ostringstream oss;
+        oss << "[";
+        Flag first = true;
+        for (const auto& e : *this) {
+            if (!first) oss << ",";
+            oss << "(" << e << ")";
+            first = false;
+        }
+        oss << "]";
+        return oss.str();
     }
 
-    //operator<<
+    // operator<< rediseñado, delegando a toString y eliminando const_cast
     friend std::ostream& operator<<(std::ostream& os, const BTree& t) {
-        std::shared_lock<std::shared_mutex> lock(t.m_mtx);
-        os << "[";
-        bool first = true;
-        const_cast<BTree&>(t).m_pRoot->forEach(0, [&](Entry& e, Level) {
-            if (!first) os << ",";
-            os << "(" << e << ")";
-            first = false;
-        });
-        return os << "]";
+        return os << t.toString();
     }
 
     //operator>>

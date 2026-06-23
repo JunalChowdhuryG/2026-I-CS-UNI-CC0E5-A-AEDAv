@@ -27,23 +27,28 @@ public:
     
     //iterator
     class Iterator {
-        std::vector<std::pair<Page*, Size>> m_stack;
+    std::vector<std::pair<Page*, Size>> m_stack;
+    const BTree* m_owner = nullptr;   // <-- AGREGAR: para poder lockear en cada operación
 
-        void pushPath(Page* page, Size idx) {
-            while (page && page->m_keyCount > 0) {
-                m_stack.push_back({page, idx});
-                page = page->m_subPages[idx];
-                idx = 0;
-            }
+    void pushPath(Page* page, Size idx) {
+        while (page && page->m_keyCount > 0) {
+            m_stack.push_back({page, idx});
+            page = page->m_subPages[idx];
+            idx = 0;
         }
+    }
 
     public:
         Iterator() = default;
-        explicit Iterator(Page* root) { pushPath(root, 0); }
+        explicit Iterator(Page* root, const BTree* owner) : m_owner(owner) { pushPath(root, 0); }
 
-        Entry& operator*() const { return m_stack.back().first->m_keys[m_stack.back().second]; }
+        Entry& operator*() const {
+            std::shared_lock<std::shared_mutex> lock(m_owner->m_mtx);
+            return m_stack.back().first->m_keys[m_stack.back().second];
+        }
 
         Iterator& operator++() {
+            std::shared_lock<std::shared_mutex> lock(m_owner->m_mtx);
             auto [page, idx] = m_stack.back();
             m_stack.pop_back();
 
@@ -61,13 +66,10 @@ public:
         Flag operator!=(const Iterator& o) const { return !(*this == o); }
     };
 
-    // Iteradores normales y constantes
-    Iterator begin() { std::shared_lock<std::shared_mutex> lock(m_mtx); return Iterator(m_pRoot); }
-    Iterator end()   { return Iterator(); }
-    
-    Iterator begin() const { std::shared_lock<std::shared_mutex> lock(m_mtx); return Iterator(m_pRoot); }
-    Iterator end() const   { return Iterator(); }
-
+    Iterator begin()       { std::shared_lock<std::shared_mutex> lock(m_mtx); return Iterator(m_pRoot, this); }
+    Iterator end()         { return Iterator(); }
+    Iterator begin() const { std::shared_lock<std::shared_mutex> lock(m_mtx); return Iterator(m_pRoot, this); }
+    Iterator end()   const { return Iterator(); }
 private:
     Page                *m_pRoot;
     Level                m_height;

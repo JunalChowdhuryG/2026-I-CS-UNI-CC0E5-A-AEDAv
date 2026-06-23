@@ -4,7 +4,7 @@
 #define BTREE_H
 
 #include <iostream>
-#include <utility> // Para std::forward
+#include <utility>
 #include "BTreePage.h"
 
 #define DEFAULT_BTREE_ORDER 3
